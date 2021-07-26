@@ -18,3 +18,4 @@ pomato_datasets/
 !data_out/res_capacity/other_res.csv
 !data_out/fuel/fuel.csv
 !data_out/technology/technology.csv
+data_in
