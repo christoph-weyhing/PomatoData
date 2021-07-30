@@ -81,29 +81,30 @@ class PomatoData():
         add_nodes = []
         add_dclines = []
         geod = pyproj.Geod(ellps="WGS84")
-        for z in non_grid_zones:
-            # z = "NO"
-            if z == "NO":
-                lat, lon = 63.342806, 10.459677
-            else:
-                lon, lat = shapely.wkt.loads(self.zones.loc[z, "geometry"]).centroid.coords[0]
-            name = self.zones.loc[z, "name"]
-            # substation', 'voltage', 'name', 'lat', 'lon', 'zone', 'info', 'demand', 'slack'
-            add_nodes.append(["n" + z, "n" + z, 500, name, lat, lon, z, "", True, True])
-            self.nodes.loc[self.nodes.zone == z, "demand"] = False
-            # 'node_i', 'node_j', 'name_i', 'name_j', 'voltage', 'length', 'under_construction', 
-            # 'geometry', 'technology', 'capacity', 'status', 'commissioned'
-            for n in self.nodes[self.nodes.zone == z].index:
-                geometry = LineString([Point(self.nodes.loc[n, ["lon", "lat"]]), Point(lon, lat)])
-                length = geod.geometry_length(geometry)
-                add_dclines.append(["dc" + z + "_" + n, "n" + z, n, z, n, 500, length, False,
-                                    geometry.wkt, "dc", 1e5, "online", 1900])
-        
-        add_nodes = pd.DataFrame(index=np.array(add_nodes)[:, 0], columns=self.nodes.columns, data=np.array(add_nodes)[:, 1:])
-        add_dclines = pd.DataFrame(index=np.array(add_dclines)[:, 0], columns=self.dclines.columns, data=np.array(add_dclines)[:, 1:])
-        
-        self.nodes = self.nodes.append(add_nodes)
-        self.dclines = self.dclines.append(add_dclines)
+        if non_grid_zones:
+            for z in non_grid_zones:
+                # z = "NO"
+                if z == "NO":
+                    lat, lon = 63.342806, 10.459677
+                else:
+                    lon, lat = shapely.wkt.loads(self.zones.loc[z, "geometry"]).centroid.coords[0]
+                name = self.zones.loc[z, "name"]
+                # substation', 'voltage', 'name', 'lat', 'lon', 'zone', 'info', 'demand', 'slack'
+                add_nodes.append(["n" + z, "n" + z, 500, name, lat, lon, z, "", True, True])
+                self.nodes.loc[self.nodes.zone == z, "demand"] = False
+                # 'node_i', 'node_j', 'name_i', 'name_j', 'voltage', 'length', 'under_construction', 
+                # 'geometry', 'technology', 'capacity', 'status', 'commissioned'
+                for n in self.nodes[self.nodes.zone == z].index:
+                    geometry = LineString([Point(self.nodes.loc[n, ["lon", "lat"]]), Point(lon, lat)])
+                    length = geod.geometry_length(geometry)
+                    add_dclines.append(["dc" + z + "_" + n, "n" + z, n, z, n, 500, length, False,
+                                        geometry.wkt, "dc", 1e5, "online", 1900])
+            
+            add_nodes = pd.DataFrame(index=np.array(add_nodes)[:, 0], columns=self.nodes.columns, data=np.array(add_nodes)[:, 1:])
+            add_dclines = pd.DataFrame(index=np.array(add_dclines)[:, 0], columns=self.dclines.columns, data=np.array(add_dclines)[:, 1:])
+            
+            self.nodes = self.nodes.append(add_nodes)
+            self.dclines = self.dclines.append(add_dclines)
 
         self.dclines[["capacity", "length"]] = self.dclines[["capacity", "length"]].astype("float")
         self.nodes[["lat", "lon", "voltage"]] = self.nodes[["lat", "lon", "voltage"]].astype("float")
@@ -112,8 +113,14 @@ class PomatoData():
     def process_lines_nodes(self):
         """Process Nodes and Lines Data."""
         nodes_in_co = self.nodes.index[self.nodes.zone.isin(self.settings["grid_zones"])]
-        self.lines = self.lines[(self.lines.node_i.isin(nodes_in_co)) |
-                                (self.lines.node_j.isin(nodes_in_co))]
+        if self.settings["include_neighbours"]==True:
+            self.lines = self.lines[(self.lines.node_i.isin(nodes_in_co)) |
+                                    (self.lines.node_j.isin(nodes_in_co))]
+        elif self.settings["include_neighbours"]==False:
+            self.lines = self.lines[(self.lines.node_i.isin(nodes_in_co)) &
+                                    (self.lines.node_j.isin(nodes_in_co))]
+        else:
+            raise TypeError("Type of include_neighbours must be boolean.")
         # Filter Online
         # condition_online = (self.lines.status == "online") | (self.lines.commissioned <= self.settings["year"])
         condition_connected = (self.lines.node_i.isin(self.nodes.index) &  self.lines.node_j.isin(self.nodes.index))
