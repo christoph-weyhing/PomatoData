@@ -77,7 +77,7 @@ def prepare_cutout(weather_year, countries, cache_file_path, cache_file_name):
                            module='era5',
                            x=slice(x1-.2, x2+.2), y=slice(y1-.2, y2+.2),
                            chunks={'time':100},
-                           time=weather_year)
+                           time=str(weather_year))
     cutout.prepare()
     return cutout 
 

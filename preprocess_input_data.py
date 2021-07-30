@@ -1,9 +1,10 @@
-
+#%%
 import sys 
 import os
 from pathlib import Path
 import pandas as pd
 
+#%%
 if __name__ == "__main__":  
 
     # The purpose of this script is to preprocess the raw input data obtained 
@@ -22,11 +23,11 @@ if __name__ == "__main__":
     # PomatoData only uses data from data out and filter/processes it into 
     # a single data-set compatible with POMATO. 
     
-    if Path(os.path.abspath("")).name != "pomato_data":
-        raise FileNotFoundError("Please Execute the script in the repository itself, use os.chdir() to change path")
-    else: 
-        wdir = Path(os.path.abspath(""))
-
+    # if Path(os.path.abspath("")).name != "pomato_data":
+    #     raise FileNotFoundError("Please Execute the script in the repository itself, use os.chdir() to change path")
+    # else: 
+    #     wdir = Path(os.path.abspath(""))
+    wdir = Path(os.path.abspath(""))
     # %% Geographic information: FFE - Geodata 
     from pomato_data.auxiliary import get_countries_regions_ffe, get_eez_ffe
     
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     zones.to_csv(wdir.joinpath('data_out/zones/zones.csv'))
     nuts_data.to_csv(wdir.joinpath('data_out/zones/nuts_data.csv'))
     # Offshore areas are defined by the exclusive economic zones
-    eez_region = get_eez_ffe(force_recalc=True)
+    eez_region = get_eez_ffe(force_recalc=False)
     eez_region.drop("geometry", axis=1).to_csv(wdir.joinpath('data_out/zones/eez_wo_geometry.csv'))
     eez_region.to_csv(wdir.joinpath('data_out/zones/eez.csv'))
     
@@ -61,24 +62,40 @@ if __name__ == "__main__":
     countries = ["DE", "BE", "FR", "LU", "NL", "CH", "AT", "CZ", "DK", "PL", "SE", "ES", "PT", "UK", "NO", "IT"]
     weather_year = 2019
     cutout = prepare_cutout(weather_year, countries, wdir.joinpath("data_temp"), "core")
-    # Wind Onshore, PV
-    wind, pv = get_availabilities_atlite(cutout, countries, opsd_filepath)
-    # Save Resulting Tables. 
-    wind.to_csv(wdir.joinpath(f'data_out/res_availability/wind_availability_{weather_year}.csv'))
-    pv.to_csv(wdir.joinpath(f'data_out/res_availability/pv_availability_{weather_year}.csv'))
+
+
+
+#%%
+    # # Wind Onshore, PV
+    # wind, pv = get_availabilities_atlite(cutout, countries, opsd_filepath)
+    # # Save Resulting Tables. 
+    # wind.to_csv(wdir.joinpath(f'data_out/res_availability/wind_availability_{weather_year}.csv'))
+    # pv.to_csv(wdir.joinpath(f'data_out/res_availability/pv_availability_{weather_year}.csv'))
+    # # Offshore
+    # offshore = offshore_eez_atlite(cutout)
+    # offshore.to_csv(wdir.joinpath(f'data_out/res_availability/offshore_availability_{weather_year}.csv'))
+
+    #Loop alternative
+    for cnt in countries:
+        # Wind Onshore, PV
+        wind, pv = get_availabilities_atlite(cutout, cnt, opsd_filepath)
+        # Save Resulting Tables. 
+        wind.to_csv(wdir.joinpath(f'data_out/res_availability/wind_availability_{weather_year}_{cnt}.csv'))
+        pv.to_csv(wdir.joinpath(f'data_out/res_availability/pv_availability_{weather_year}_{cnt}.csv'))
     # Offshore
     offshore = offshore_eez_atlite(cutout)
-    offshore.to_csv(wdir.joinpath(f'data_out/res_availability/offshore_availability_{weather_year}.csv'))
-    
+    offshore.to_csv(wdir.joinpath(f'data_out/res_availability/offshore_availability_{weather_year}.csv')) 
+
+
+#%%    
     # %% Hydro Plants with Inflows 
     # The inflows are calculated using atlite and the HydroSheds hydro basins 
     # data-set (https://www.hydrosheds.org/downloads) for EU, to determine inflows
     # we use levels 4-7, as indicated in the related publication. 
     # See: https://github.com/PyPSA/atlite/blob/1476c431360e05c0d51b4cc30248cb9e7294751e/atlite/convert.py#L529
-    
     hydrobasins_path = wdir.joinpath("data_in/hydro/hydro_basins")
     from pomato_data.hydro import process_hydro_plants_with_atlite_inflows
-    hydro_plants, inflows = process_hydro_plants_with_atlite_inflows(cutout, countries, hydrobasins_path)
+    hydro_plants, inflows = process_hydro_plants_with_atlite_inflows(wdir, cutout, countries, hydrobasins_path)
     hydro_plants.to_csv(wdir.joinpath("data_out/hydro/plants.csv"))
     inflows.to_csv(wdir.joinpath(f"data_out/hydro/inflows_{weather_year}.csv"))
     
@@ -111,10 +128,10 @@ if __name__ == "__main__":
 
     # The resulting file is included with this repository. 
     
-    # %% Network (Nodes&Lines (lines contain AC/DC and transformer branches))
+# %% Network (Nodes&Lines (lines contain AC/DC and transformer branches))
     # This requires the GridKit data from pyPSA downloaded into data_in/GridKit
     # This currently uses the version from jan 2020. 
-    
+      
     from pomato_data.grid import process_gridkit_data
     gridkit_filepath = wdir.joinpath("data_in/GridKit")
     nodes, lines = process_gridkit_data(gridkit_filepath)
@@ -125,7 +142,7 @@ if __name__ == "__main__":
     tmp_lines.to_csv(wdir.joinpath("data_out/lines/lines.csv"))
     nodes.to_csv(wdir.joinpath("data_out/nodes/nodes.csv"))
     
-    # %% Exchange: commercial's and physical 
+# %% Exchange: commercial's and physical 
     # For commercial exchange, this requires the ScheduledCommercialExchanges
     # for the chosen year in data_in\exchange\commercial_exchange and for physical 
     # cross-boarder flow CrossBorderPhysicalFlow. 
@@ -133,9 +150,9 @@ if __name__ == "__main__":
     from pomato_data.exchange import (process_commercial_exchange_entso_e, 
                                       process_physical_crossborder_flow_entso_e)
                                      
-    physical_crossborder_flow = process_physical_crossborder_flow_entso_e(wdir, weather_year)
+    # physical_crossborder_flow = process_physical_crossborder_flow_entso_e(wdir, weather_year)
     commercial_exchange = process_commercial_exchange_entso_e(wdir, weather_year)
-    physical_crossborder_flow.to_csv(wdir.joinpath(f"data_out/exchange/physical_crossborder_flow_{weather_year}.csv"))
+    # physical_crossborder_flow.to_csv(wdir.joinpath(f"data_out/exchange/physical_crossborder_flow_{weather_year}.csv"))
     commercial_exchange.to_csv(wdir.joinpath(f"data_out/exchange/commercial_exchange_{weather_year}.csv"))
 
     
@@ -170,3 +187,4 @@ if __name__ == "__main__":
     
     
   
+# %%

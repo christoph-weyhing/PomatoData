@@ -1,4 +1,4 @@
-
+#%%
 import os
 from pathlib import Path
 from pomato_data.pomato_data import PomatoData
@@ -14,7 +14,7 @@ if __name__ == "__main__":
         "time_horizon": "01.05.2019 - 31.05.2019",
         }
     
-    if Path(os.path.abspath("")).name != "pomato_data":
+    if Path(os.path.abspath("")).name != "PomatoData":
         raise FileNotFoundError("Please Execute the script in the repository itself, use os.chdir() to change path")
     else: 
         wdir = Path(os.path.abspath(""))
@@ -70,3 +70,5 @@ if __name__ == "__main__":
     # t = t.pivot(index="zone", columns=("fuel", "technology"), values="g_max")
     # t.plot.bar(stacked=True)
 
+
+# %%

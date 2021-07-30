@@ -42,10 +42,11 @@ class PomatoData():
         self.connect_small_subnetworks()
 
         self.process_zones()
-        self.process_demand()
         
         self.process_plants()
         self.process_res_plants()
+
+        self.process_demand()
         self.marginal_costs()
 
         self.process_availabilities()
