@@ -11,7 +11,7 @@ if __name__ == "__main__":
         "capacity_year": 2030, 
         "co2_price": 60,
         "split_lines": True,
-        "time_horizon": "01.05.2019 - 31.05.2019",
+        "time_horizon": "01.01.2019 - 31.12.2019",
         }
     
     if Path(os.path.abspath("")).name != "PomatoData":
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     data.create_basic_ntcs()
 
     # Remove small plants below a certain threshold 
-    threshold = 12
+    threshold = 1
     data.plants[data.plants.g_max > threshold].g_max.sum() / data.plants.g_max.sum()  
     len(data.plants[data.plants.g_max > threshold]) / len(data.plants[data.plants.g_max > 0])
     
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         
         data.plants.loc[(condition_nuclear|condition_coal|condition_lignite), "g_max"] *= 0.7
     
-    foldername = f"DE_{settings['capacity_year']}_test"
+    foldername = f"DE_{settings['capacity_year']}"
     data.save_to_csv(foldername)
     
     # %% Testing 

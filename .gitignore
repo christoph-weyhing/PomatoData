@@ -7,7 +7,7 @@ _data_share/
 .vscode/
 data_in/demand/gdp_data/
 data_in/hydro/hydro_basins
-pomato_datasets/
+pomato_datasets
 # Allow specific input data. 
 !pomato_datasets/DE_2020.zip
 !pomato_datasets/DE_2030.zip
