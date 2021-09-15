@@ -3,12 +3,14 @@ import os
 from pathlib import Path
 from pomato_data.pomato_data import PomatoData
 
+#%%
+
 if __name__ == "__main__":  
 
     settings = {
         "grid_zones": ["DE"],
         "weather_year": 2019,
-        "capacity_year": 2030, 
+        "scenario": 'NEP_C_2030_ext_anymod',    # name of the csv file in folder data_out/extension
         "co2_price": 60,
         "split_lines": True,
         "time_horizon": "01.01.2019 - 31.12.2019",

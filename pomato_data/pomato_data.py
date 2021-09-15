@@ -238,7 +238,7 @@ class PomatoData():
     
     def process_res_plants(self):
         
-        res_plants = regionalize_res_capacities(self.wdir, self.settings["capacity_year"], 
+        res_plants = regionalize_res_capacities(self.wdir, self.settings["scenario"], 
                                                 self.nodes.copy(), self.zones.index, self.technology)
         res_plants.g_max.sum()
         self.plants = pd.concat([self.plants, res_plants])

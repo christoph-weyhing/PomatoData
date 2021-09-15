@@ -6,34 +6,42 @@ import geopandas as gpd
 
 from pomato_data.auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
 
-def anymod_installed_capacities(wdir, year=2030):
-    # base_path = Path(pomato_data.__path__[0]).parent 
-    anymod_result_path = wdir.joinpath("data_in/anymod_results/results_summary_8days_grid_202105061657.csv")
+### deprecated ###
+# def anymod_installed_capacities(wdir, year=2030):
+#     # base_path = Path(pomato_data.__path__[0]).parent 
+#     anymod_result_path = wdir.joinpath("data_in/anymod_results/results_summary_8days_grid_202105061657.csv")
 
-    raw = pd.read_csv(anymod_result_path)
-    raw.loc[raw.technology.str.contains("offshore"), "group"] +=  "offshore" 
-    raw.loc[raw.technology.str.contains("onshore"), "group"] += "onshore" 
-    raw.loc[:, "group"] = raw.loc[:, "group"].str.rstrip(" ")
-    raw = raw.drop(["id", "Unnamed: 10"], axis=1)
+#     raw = pd.read_csv(anymod_result_path)
+#     raw.loc[raw.technology.str.contains("offshore"), "group"] +=  "offshore" 
+#     raw.loc[raw.technology.str.contains("onshore"), "group"] += "onshore" 
+#     raw.loc[:, "group"] = raw.loc[:, "group"].str.rstrip(" ")
+#     raw = raw.drop(["id", "Unnamed: 10"], axis=1)
     
-    condition_var = raw.variable.isin(["capaConv", "capaStSize","capaStIn"])
-    condition_year = raw.timestep_superordinate_dispatch.str.contains(str(year))
+#     condition_var = raw.variable.isin(["capaConv", "capaStSize","capaStIn"])
+#     condition_year = raw.timestep_superordinate_dispatch.str.contains(str(year))
     
-    if sum(condition_year) == 0:
-        raise ValueError("capacity year not in AnyMod results")
-    else:
-        installed_capacity = raw[condition_var & condition_year].groupby(["country", "group", "variable"]).sum()
-        installed_capacity  = installed_capacity.reset_index().pivot(
-            index=["country", "group"],columns="variable", values="value")
+#     if sum(condition_year) == 0:
+#         raise ValueError("capacity year not in AnyMod results")
+#     else:
+#         installed_capacity = raw[condition_var & condition_year].groupby(["country", "group", "variable"]).sum()
+#         installed_capacity  = installed_capacity.reset_index().pivot(
+#             index=["country", "group"],columns="variable", values="value")
                                                  
-    return installed_capacity
+#     return installed_capacity
 
+def load_installed_res_capacities(wdir, scenario):
+    '''
+    Loads installed RES capacities from scenario CSV-dataframe
+    '''
+    relative_path = 'data_out/extension/' + scenario + '.csv'
+    installed_capacities = pd.read_csv(wdir.joinpath(relative_path), index_col=[0,1])
+    return installed_capacities
 
-def calculate_capacities_from_potentials(wdir, year=2020):
+def calculate_capacities_from_potentials(wdir, scenario):
 
     wind_potentials = pd.read_csv(wdir.joinpath('data_out/res_potential/wind_potential.csv'), index_col=0).set_index("name_short")
     pv_potentials = pd.read_csv(wdir.joinpath('data_out/res_potential/pv_potential.csv'), index_col=0).set_index("name_short")
-    installed_capacities = anymod_installed_capacities(wdir, year)
+    installed_capacities = load_installed_res_capacities(wdir, scenario)
     # Capacity is distributed based on the potential in MWh
     wind_capacities = wind_potentials.copy()
     pv_capacities = pv_potentials.copy()
@@ -59,9 +67,9 @@ def calculate_capacities_from_potentials(wdir, year=2020):
 
     return wind_capacities, pv_capacities
     
-def regionalize_res_capacities(wdir, year, nodes, zones, technology):
+def regionalize_res_capacities(wdir, scenario, nodes, zones, technology):
         
-    capacity_wind, capacity_pv = calculate_capacities_from_potentials(wdir, year)
+    capacity_wind, capacity_pv = calculate_capacities_from_potentials(wdir, scenario)
     
     capacity_wind = capacity_wind.rename(columns={"capacity": "wind/wind onshore"})
     capacity_pv = capacity_pv.rename(columns={"capacity": "sun/solar"})
