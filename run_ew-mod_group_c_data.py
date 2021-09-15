@@ -8,7 +8,7 @@ os.chdir("C:\\Users\\cw\\repositories\\PomatoData")
 if __name__ == "__main__":  
 
     settings = {
-        "grid_zones": ["DE","NO","SE"],
+        "grid_zones": ["DE"],
         "weather_year": 2019,
         "capacity_year": 2030, 
         "co2_price": 55,
@@ -25,8 +25,8 @@ if __name__ == "__main__":
         
     data = PomatoData(wdir, settings)
 
-# %% EW-MOD Group G Processing
-    data.create_basic_ntcs()
+# %% EW-MOD Group C Processing
+    # data.create_basic_ntcs()
 
     # Remove small plants below a certain threshold 
     threshold = 1
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     drop_plants = [p for p in data.availability.columns if p not in data.plants.index]
     data.availability = data.availability.drop(drop_plants, axis=1)
     
-    foldername = f"EW-MOD_Group-G_{settings['capacity_year']}_no_nghbrs"
+    foldername = f"EW-MOD_Group-C_{settings['capacity_year']}_no_nghbrs"
     data.save_to_csv(foldername)
     
 #%% Testing 
@@ -53,14 +53,14 @@ if __name__ == "__main__":
     # ntc = data.ntc
     # technology = data.technology
     
-    plants_2020 = data.plants.copy()
+    plants_2030 = data.plants.copy()
     # # plants_2030 = data.plants.copy()
-    t = plants_2020[["fuel", "technology", "zone", "g_max"]].groupby(["fuel", "technology", "zone"]).sum().reset_index().fillna(0)
+    t = plants_2030[["fuel", "technology", "zone", "g_max"]].groupby(["fuel", "technology", "zone"]).sum().reset_index().fillna(0)
     t = t.pivot(index="zone", columns=("fuel", "technology"), values="g_max")
     t.plot.bar(stacked=True)
     
     #hydro plants norway
-    reservoir_NO = data.plants.loc[(data.plants.zone == 'NO') & (data.plants.fuel == 'hydro')]
+    # reservoir_NO = data.plants.loc[(data.plants.zone == 'NO') & (data.plants.fuel == 'hydro')]
 
 
 # %%

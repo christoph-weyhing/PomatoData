@@ -57,7 +57,10 @@ class PomatoData():
         self.process_storage_level()
         
         self.fix_plant_connections()
-        self.create_basic_ntcs()
+        if len(self.settings["grid_zones"])>1:
+            self.create_basic_ntcs()
+        else:
+            self.ntc = pd.DataFrame(columns=["zone_i", "zone_j", "ntc"])
 
     def load_data(self):
         
@@ -500,32 +503,35 @@ class PomatoData():
         storage_level["storage_level"] = storage_level["storage_level"] / (1.25 * storage_level.groupby("zone").max().loc[storage_level.zone, "storage_level"].values)
                 
         storage_level = storage_level[storage_level.zone.isin(self.plants.loc[self.plants.plant_type == "hydro_res", "zone"])]
-        storage_level.pivot(index="utc_timestamp", columns="zone", values="storage_level").plot()
-        
-        storage_level = storage_level[(storage_level.utc_timestamp >= self.time_horizon["start"]) & \
-                                      (storage_level.utc_timestamp < self.time_horizon["end"])]
-
-        timestep_index = self.demand_el.loc[self.demand_el.utc_timestamp.isin(storage_level.utc_timestamp), "utc_timestamp"]
-        storage_level_plants = pd.DataFrame()
-        
-        for plant in self.plants[(self.plants.plant_type == "hydro_res")&(self.plants.zone.isin(storage_level.zone))].index:
+        if not storage_level.empty:
+            # storage_level.pivot(index="utc_timestamp", columns="zone", values="storage_level").plot()
+                
+            storage_level = storage_level[(storage_level.utc_timestamp >= self.time_horizon["start"]) & \
+                                          (storage_level.utc_timestamp < self.time_horizon["end"])]
+    
+            timestep_index = self.demand_el.loc[self.demand_el.utc_timestamp.isin(storage_level.utc_timestamp), "utc_timestamp"]
+            storage_level_plants = pd.DataFrame()
             
-            tmp_storage_level = pd.merge(timestep_index.reset_index(), storage_level[storage_level.zone == self.plants.loc[plant, "zone"]], 
-                                         on="utc_timestamp", how="left")
-            tmp_storage_level = tmp_storage_level.drop("zone", axis=1)
-            tmp_storage_level["plant"] = plant
-            if any(tmp_storage_level.storage_level.isna()):
-                for idx in tmp_storage_level[tmp_storage_level.storage_level.isna()].index:
-                    tmp_storage_level.loc[idx, "storage_level"] = tmp_storage_level.loc[idx-1, "storage_level"]
-                 
-            t_start = tmp_storage_level.loc[[0], tmp_storage_level.columns].copy()
-            t_start["timestep"] = self.demand_el.index[0]
-            t_end = tmp_storage_level.loc[[len(tmp_storage_level) - 1], tmp_storage_level.columns].copy()
-            t_end["timestep"] = self.demand_el.index[-1]
-            storage_level_plants = pd.concat([storage_level_plants, pd.concat([t_start, tmp_storage_level, t_end])])
-        
-        self.storage_level = storage_level_plants.reset_index()[["timestep", "plant", "storage_level"]]
-        
+            for plant in self.plants[(self.plants.plant_type == "hydro_res")&(self.plants.zone.isin(storage_level.zone))].index:
+                
+                tmp_storage_level = pd.merge(timestep_index.reset_index(), storage_level[storage_level.zone == self.plants.loc[plant, "zone"]], 
+                                             on="utc_timestamp", how="left")
+                tmp_storage_level = tmp_storage_level.drop("zone", axis=1)
+                tmp_storage_level["plant"] = plant
+                if any(tmp_storage_level.storage_level.isna()):
+                    for idx in tmp_storage_level[tmp_storage_level.storage_level.isna()].index:
+                        tmp_storage_level.loc[idx, "storage_level"] = tmp_storage_level.loc[idx-1, "storage_level"]
+                     
+                t_start = tmp_storage_level.loc[[0], tmp_storage_level.columns].copy()
+                t_start["timestep"] = self.demand_el.index[0]
+                t_end = tmp_storage_level.loc[[len(tmp_storage_level) - 1], tmp_storage_level.columns].copy()
+                t_end["timestep"] = self.demand_el.index[-1]
+                storage_level_plants = pd.concat([storage_level_plants, pd.concat([t_start, tmp_storage_level, t_end])])
+            
+            self.storage_level = storage_level_plants.reset_index()[["timestep", "plant", "storage_level"]]
+        else:
+            self.storage_level = pd.DataFrame(columns=["utc_timestamp","zone","storage_level"])
+              
         
         
 # %%
