@@ -6,28 +6,29 @@ import geopandas as gpd
 
 from pomato_data.auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
 
-### deprecated ###
-# def anymod_installed_capacities(wdir, year=2030):
-#     # base_path = Path(pomato_data.__path__[0]).parent 
-#     anymod_result_path = wdir.joinpath("data_in/anymod_results/results_summary_8days_grid_202105061657.csv")
+### deprecated begin ###
+def anymod_installed_capacities(wdir, year=2030):
+    # base_path = Path(pomato_data.__path__[0]).parent 
+    anymod_result_path = wdir.joinpath("data_in/anymod_results/results_summary_8days_grid_202105061657.csv")
 
-#     raw = pd.read_csv(anymod_result_path)
-#     raw.loc[raw.technology.str.contains("offshore"), "group"] +=  "offshore" 
-#     raw.loc[raw.technology.str.contains("onshore"), "group"] += "onshore" 
-#     raw.loc[:, "group"] = raw.loc[:, "group"].str.rstrip(" ")
-#     raw = raw.drop(["id", "Unnamed: 10"], axis=1)
+    raw = pd.read_csv(anymod_result_path)
+    raw.loc[raw.technology.str.contains("offshore"), "group"] +=  "offshore" 
+    raw.loc[raw.technology.str.contains("onshore"), "group"] += "onshore" 
+    raw.loc[:, "group"] = raw.loc[:, "group"].str.rstrip(" ")
+    raw = raw.drop(["id", "Unnamed: 10"], axis=1)
     
-#     condition_var = raw.variable.isin(["capaConv", "capaStSize","capaStIn"])
-#     condition_year = raw.timestep_superordinate_dispatch.str.contains(str(year))
+    condition_var = raw.variable.isin(["capaConv", "capaStSize","capaStIn"])
+    condition_year = raw.timestep_superordinate_dispatch.str.contains(str(year))
     
-#     if sum(condition_year) == 0:
-#         raise ValueError("capacity year not in AnyMod results")
-#     else:
-#         installed_capacity = raw[condition_var & condition_year].groupby(["country", "group", "variable"]).sum()
-#         installed_capacity  = installed_capacity.reset_index().pivot(
-#             index=["country", "group"],columns="variable", values="value")
+    if sum(condition_year) == 0:
+        raise ValueError("capacity year not in AnyMod results")
+    else:
+        installed_capacity = raw[condition_var & condition_year].groupby(["country", "group", "variable"]).sum()
+        installed_capacity  = installed_capacity.reset_index().pivot(
+            index=["country", "group"],columns="variable", values="value")
                                                  
-#     return installed_capacity
+    return installed_capacity
+### deprecated end ###
 
 def load_installed_res_capacities(wdir, scenario):
     '''
