@@ -10,8 +10,8 @@ data_in/demand/gdp_data/
 data_in/hydro/hydro_basins
 pomato_datasets
 # Allow specific input data. 
-!pomato_datasets/DE_2020.zip
-!pomato_datasets/DE_2030.zip
+pomato_datasets/DE_2020.zip
+pomato_datasets/DE_2030.zip
 !data_in/plants/input_efficiency_literature_by_fuel_technology.csv
 !data_in/plants/plants.csv
 !data_in/demand/gdp_data.zip
@@ -20,3 +20,4 @@ pomato_datasets
 !data_out/fuel/fuel.csv
 !data_out/technology/technology.csv
 data_in
+pomato_datasets/

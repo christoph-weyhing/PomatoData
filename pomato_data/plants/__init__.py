@@ -1,1 +1,2 @@
 from pomato_data.plants.process_plants import process_plants
+from pomato_data.plants.decommissioning import decommission

@@ -21,6 +21,7 @@ from pomato_data.auxiliary import (add_timesteps, distance,
 from pomato_data.demand import nodal_demand
 from pomato_data.res import (process_offshore_windhubs,
                               regionalize_res_capacities)
+from pomato_data.plants import decommission
 
 
 class PomatoData():
@@ -33,31 +34,32 @@ class PomatoData():
         startend = self.settings["time_horizon"].split(" - ")
         self.time_horizon = {"start": dt.datetime.strptime(startend[0], "%d.%m.%Y"),
                              "end": dt.datetime.strptime(startend[1], "%d.%m.%Y")}
-        
-        self.load_data()
-        self.drop_network_elements()
-        
-        self.process_lines_nodes()
-        self.split_double_lines()
-        self.connect_small_subnetworks()
+        if self.settings["future"]:
+            self.load_data()
+            self.drop_network_elements()
+            
+            self.process_lines_nodes()
+            self.split_double_lines()
+            self.connect_small_subnetworks()
 
-        self.process_zones()
-        
-        self.process_plants()
-        self.process_res_plants()
+            self.process_zones()
+            
+            self.process_plants()
+            self.process_res_plants()
+            self.decommission_plants()
 
-        self.process_demand()
-        self.marginal_costs()
+            self.process_demand()
+            self.marginal_costs()
 
-        self.process_availabilities()
-        self.process_hydro_plants()
-        self.process_offshore_plants()
-        self.uniquify_marginal_costs()
-        
-        self.process_storage_level()
-        
-        self.fix_plant_connections()
-        self.create_basic_ntcs()
+            self.process_availabilities()
+            self.process_hydro_plants()
+            self.process_offshore_plants()
+            self.uniquify_marginal_costs()
+            
+            self.process_storage_level()
+            
+            self.fix_plant_connections()
+            self.create_basic_ntcs()
 
     def load_data(self):
         
@@ -69,6 +71,9 @@ class PomatoData():
         self.plants = pd.read_csv(self.wdir.joinpath("data_out/plants/plants.csv"), index_col=0)
         self.fuel = pd.read_csv(self.wdir.joinpath("data_out/fuel/fuel.csv"), index_col=0)
         self.technology = pd.read_csv(self.wdir.joinpath("data_out/technology/technology.csv"), index_col=0)
+
+        relative_path = 'data_out/extension/' + self.settings["scenario"] + '.csv'
+        self.scenario = pd.read_csv(self.wdir.joinpath(relative_path))
         
         year = self.settings["weather_year"]
         self.demand_el = pd.read_csv(self.wdir.joinpath(f'data_out/demand/demand_{year}.csv'), index_col=0)
@@ -238,7 +243,7 @@ class PomatoData():
     
     def process_res_plants(self):
         
-        res_plants = regionalize_res_capacities(self.wdir, self.settings["scenario"], 
+        res_plants = regionalize_res_capacities(self.wdir, self.settings["scenario"],
                                                 self.nodes.copy(), self.zones.index, self.technology)
         res_plants.g_max.sum()
         self.plants = pd.concat([self.plants, res_plants])
@@ -320,8 +325,9 @@ class PomatoData():
 
     def process_offshore_plants(self):
         weather_year = self.settings["weather_year"]
-        capacity_year = self.settings["capacity_year"]
-        offshore_plants, offshore_nodes, offshore_connections, offshore_availability = process_offshore_windhubs(self.wdir, self.nodes, weather_year, capacity_year)
+        # capacity_year = self.settings["capacity_year"]
+        scenario =  self.settings["scenario"]
+        offshore_plants, offshore_nodes, offshore_connections, offshore_availability = process_offshore_windhubs(self.wdir, self.nodes, weather_year, scenario)
         
         offshore_availability = offshore_availability[(offshore_availability.index >= self.time_horizon["start"]) & \
                                                       (offshore_availability.index < self.time_horizon["end"])]
@@ -451,7 +457,7 @@ class PomatoData():
         if filepath:
             elm = pd.read_csv(filepath)
         else:
-            year = self.settings["capacity_year"]
+            year = self.settings["year"]
             elm = pd.read_csv(self.wdir.joinpath(f"data_out/drop_network_elements_{year}.csv"))
 
 
@@ -518,6 +524,9 @@ class PomatoData():
             storage_level_plants = pd.concat([storage_level_plants, pd.concat([t_start, tmp_storage_level, t_end])])
         
         self.storage_level = storage_level_plants.reset_index()[["timestep", "plant", "storage_level"]]
+
+    def decommission_plants(self):
+        self.plants = decommission(self.plants, self.scenario, self.settings)
         
         
         
