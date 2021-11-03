@@ -110,10 +110,12 @@ if __name__ == "__main__":
     
     from pomato_data.res import get_potentials_ffe
     
-    wind_potentials, pv_potentials = get_potentials_ffe()
-    wind_potentials.to_csv(wdir.joinpath('data_out/res_potential/wind_potential.csv'))
-    pv_potentials.to_csv(wdir.joinpath('data_out/res_potential/pv_potential.csv'))
-    
+    wind_potentials, pv_rooftop_potentials, pv_park_potentials = get_potentials_ffe()
+    wind_potentials.to_csv(wdir.joinpath('data_out/res_potential/wind_onshore_potential.csv'))
+    # pv_potentials.to_csv(wdir.joinpath('data_out/res_potential/pv_potential.csv'))
+    pv_rooftop_potentials.to_csv(wdir.joinpath('data_out/res_potential/solar_rooftop_potential.csv'))
+    pv_park_potentials.to_csv(wdir.joinpath('data_out/res_potential/solar_park_potential.csv'))
+
     # %% RES capacities for wind and solar are determined based on weather year 
     # and zonal projected values from the FFE potentials. Other res without hydro 
     # is determined from OPSD renewable power plants data and mostly relates to biomass/biogas

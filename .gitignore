@@ -20,4 +20,4 @@ pomato_datasets/DE_2030.zip
 !data_out/fuel/fuel.csv
 !data_out/technology/technology.csv
 data_in
-pomato_datasets/
+pomato_datasets/*.zip

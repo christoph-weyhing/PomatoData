@@ -19,17 +19,23 @@ def get_potentials_ffe():
     wind = wind.drop(["id_region", "internal_id_1"], axis=1).fillna(.1) 
     # default has top be non-zero for the capacity regionalisation. 
     
-    pv = pd.merge(nuts_data, data[data.internal_id_1.isin([75, 76])],  on="id_region", how="left")
-    pv = pv.drop(["id_region", "internal_id_1"], axis=1).fillna(.1)
-    pv = pv.groupby(["name", "name_short", "country"]).sum().reset_index()
-    pv = pd.merge(pv, nuts_data[["name_short", "geometry"]], on="name_short")
+    pv_rooftop = pd.merge(nuts_data, data[data.internal_id_1.isin([75])],  on="id_region", how="left")
+    pv_rooftop = pv_rooftop.drop(["id_region", "internal_id_1"], axis=1).fillna(.1)
+    pv_rooftop = pv_rooftop.groupby(["name", "name_short", "country"]).sum().reset_index()
+    pv_rooftop = pd.merge(pv_rooftop, nuts_data[["name_short", "geometry"]], on="name_short")
+
+    pv_park = pd.merge(nuts_data, data[data.internal_id_1.isin([76])],  on="id_region", how="left")
+    pv_park = pv_park.drop(["id_region", "internal_id_1"], axis=1).fillna(.1)
+    pv_park = pv_park.groupby(["name", "name_short", "country"]).sum().reset_index()
+    pv_park = pd.merge(pv_park, nuts_data[["name_short", "geometry"]], on="name_short")
     
-    return wind, pv
+    return wind, pv_rooftop, pv_park
 
 if __name__ == "__main__": 
     import pomato_data
     
     wdir = Path(pomato_data.__path__[0]).parent 
-    wind_potentials, pv_potentials = get_potentials_ffe()
+    wind_potentials, pv_rooftop_potentials, pv_park_potentials = get_potentials_ffe()
     wind_potentials.to_csv(wdir.joinpath('data_out/res_potential/wind_potential.csv'))
-    pv_potentials.to_csv(wdir.joinpath('data_out/res_potential/pv_potential.csv'))
+    pv_rooftop_potentials.to_csv(wdir.joinpath('data_out/res_potential/pv_rooftop_potential.csv'))
+    pv_park_potentials.to_csv(wdir.joinpath('data_out/res_potential/pv_park_potential.csv'))

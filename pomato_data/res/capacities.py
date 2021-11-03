@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 import shapely
 import geopandas as gpd
+from functools import reduce
 
 from pomato_data.auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
 
@@ -38,54 +39,102 @@ def load_installed_res_capacities(wdir, scenario):
     installed_capacities = pd.read_csv(wdir.joinpath(relative_path), index_col=[0,1])
     return installed_capacities
 
-def calculate_capacities_from_potentials(wdir, scenario):
+def read_in_res_potentials(wdir, res_technologies = ["solar rooftop", "solar park", "wind onshore"]):
+    '''
+    Read in RES extension potentials into a dict
+    '''
+    potentials = dict()
+    for t in res_technologies:
+        name = t.replace(' ','_')
+        potentials[t] = pd.read_csv(wdir.joinpath('data_out/res_potential/'+name+'_potential.csv'), index_col=0).set_index("name_short")
+    return potentials
 
-    wind_potentials = pd.read_csv(wdir.joinpath('data_out/res_potential/wind_potential.csv'), index_col=0).set_index("name_short")
-    pv_potentials = pd.read_csv(wdir.joinpath('data_out/res_potential/pv_potential.csv'), index_col=0).set_index("name_short")
+def calculate_capacities_from_potentials(wdir, scenario, rooftop_share=0.7):
+
+    potentials = read_in_res_potentials(wdir, res_technologies = ["solar rooftop", "solar park", "wind onshore"])
     installed_capacities = load_installed_res_capacities(wdir, scenario)
-    # Capacity is distributed based on the potential in MWh
-    wind_capacities = wind_potentials.copy()
-    pv_capacities = pv_potentials.copy()
-    countries = [c for c in wind_capacities.country.unique() if c in installed_capacities.index]
+    capacities = potentials.copy()
+    potential_keys = list(potentials.keys()) 
+    countries = [c for c in capacities[potential_keys[0]].country.unique() if c in installed_capacities.index]
 
-    wind_capacities["relative_potential"] = 1 
-    wind_capacities["capacity"] = 0 
-    pv_capacities["relative_potential"] = 1 
-    pv_capacities["capacity"] = 0 
+    for k in potential_keys:
+        capacities[k]["relative_potential"] = 1 
+        capacities[k]["capacity"] = 0
 
     for c in countries:
-        wind_capacities.loc[wind_capacities.country == c, "relative_potential"] = wind_potentials.loc[wind_potentials.country == c, "value"]/wind_potentials.loc[wind_potentials.country == c, "value"].sum()
-        if c in installed_capacities.xs("wind onshore", level=1).index:
-            wind_capacities.loc[wind_capacities.country == c, "capacity"] = wind_capacities.loc[wind_capacities.country == c, "relative_potential"]*installed_capacities.loc[(c, "wind onshore"), "capaConv"]*1000
-        else:
-            wind_capacities.loc[wind_capacities.country == c, "capacity"] = 0
-        
-        pv_capacities.loc[pv_capacities.country == c, "relative_potential"] = pv_potentials.loc[pv_potentials.country == c, "value"]/pv_potentials.loc[pv_potentials.country == c, "value"].sum()
-        if c in installed_capacities.xs("solar", level=1).index:
-            pv_capacities.loc[pv_capacities.country == c, "capacity"] = pv_capacities.loc[pv_capacities.country == c, "relative_potential"]*installed_capacities.loc[(c, "solar"), "capaConv"]*1000
-        else:
-            pv_capacities.loc[pv_capacities.country == c, "capacity"] = 0
+        for k in potential_keys:
+            if 'solar' in installed_capacities.loc[c, "capaConv"].index.to_list():
+                installed_capacities.loc[(c, 'solar rooftop'), "capaConv"] = installed_capacities.loc[(c, 'solar'), "capaConv"]*rooftop_share
+                installed_capacities.loc[(c, 'solar park'), "capaConv"] = installed_capacities.loc[(c, 'solar'), "capaConv"]*(1-rooftop_share)
+            capacities[k].loc[capacities[k].country == c, "relative_potential"] = potentials[k].loc[potentials[k].country == c, "value"]/potentials[k].loc[potentials[k].country == c, "value"].sum()   
+            if c in installed_capacities.xs(k, level=1).index:
+                capacities[k].loc[capacities[k].country == c, "capacity"] = capacities[k].loc[capacities[k].country == c, "relative_potential"]*installed_capacities.loc[(c, k), "capaConv"]*1000
+            else:
+                capacities[k].loc[capacities[k].country == c, "capacity"] = 0
+    # wind_potentials = pd.read_csv(wdir.joinpath('data_out/res_potential/wind_potential.csv'), index_col=0).set_index("name_short")
+    # pv_potentials = pd.read_csv(wdir.joinpath('data_out/res_potential/pv_potential.csv'), index_col=0).set_index("name_short")
+    # installed_capacities = load_installed_res_capacities(wdir, scenario)
+    # # Capacity is distributed based on the potential in MWh
+    # wind_capacities = wind_potentials.copy()
+    # pv_capacities = pv_potentials.copy()
+    # countries = [c for c in wind_capacities.country.unique() if c in installed_capacities.index]
 
-    return wind_capacities, pv_capacities
-    
-def regionalize_res_capacities(wdir, scenario, nodes, zones, technology):
+    # wind_capacities["relative_potential"] = 1 
+    # wind_capacities["capacity"] = 0 
+    # pv_capacities["relative_potential"] = 1 
+    # pv_capacities["capacity"] = 0 
+
+    # for c in countries:
+    #     wind_capacities.loc[wind_capacities.country == c, "relative_potential"] = wind_potentials.loc[wind_potentials.country == c, "value"]/wind_potentials.loc[wind_potentials.country == c, "value"].sum()
+    #     if c in installed_capacities.xs("wind onshore", level=1).index:
+    #         wind_capacities.loc[wind_capacities.country == c, "capacity"] = wind_capacities.loc[wind_capacities.country == c, "relative_potential"]*installed_capacities.loc[(c, "wind onshore"), "capaConv"]*1000
+    #     else:
+    #         wind_capacities.loc[wind_capacities.country == c, "capacity"] = 0
         
-    capacity_wind, capacity_pv = calculate_capacities_from_potentials(wdir, scenario)
+    #     pv_capacities.loc[pv_capacities.country == c, "relative_potential"] = pv_potentials.loc[pv_potentials.country == c, "value"]/pv_potentials.loc[pv_potentials.country == c, "value"].sum()
+    #     if c in installed_capacities.xs("solar", level=1).index:
+    #         pv_capacities.loc[pv_capacities.country == c, "capacity"] = pv_capacities.loc[pv_capacities.country == c, "relative_potential"]*installed_capacities.loc[(c, "solar"), "capaConv"]*1000
+    #     else:
+    #         pv_capacities.loc[pv_capacities.country == c, "capacity"] = 0
+
+    # return wind_capacities, pv_capacities
+
+    return capacities
     
-    capacity_wind = capacity_wind.rename(columns={"capacity": "wind/wind onshore"})
-    capacity_pv = capacity_pv.rename(columns={"capacity": "sun/solar"})
-    
+def regionalize_res_capacities(wdir, scenario, nodes, zones, technology):   
+    # capacity_wind, capacity_pv = calculate_capacities_from_potentials(wdir, scenario)
+    # capacity_wind = capacity_wind.rename(columns={"capacity": "wind/wind onshore"})
+    # capacity_pv = capacity_pv.rename(columns={"capacity": "sun/solar"})
+    # other_res = pd.read_csv(wdir.joinpath('data_out/res_capacity/other_res.csv'), 
+    #                           index_col=0) 
+    # capacity_nuts = pd.merge(capacity_pv["sun/solar"], capacity_wind["wind/wind onshore"], 
+    #                          right_index=True, left_index=True)
+    # capacity_nuts = pd.merge(capacity_nuts, other_res, right_index=True, left_index=True, how="left").fillna(0)
+
+    #     plants = pd.DataFrame()
+    # for zone in zones:
+    #     plants = pd.concat([plants, regionalize_capacities_country(nodes, zone, capacity_nuts, technology)])
+    # return plants
+
+    capacities = calculate_capacities_from_potentials(wdir, scenario)
     other_res = pd.read_csv(wdir.joinpath('data_out/res_capacity/other_res.csv'), 
-                              index_col=0)
-    
-    capacity_nuts = pd.merge(capacity_pv["sun/solar"], capacity_wind["wind/wind onshore"], 
-                             right_index=True, left_index=True)
+                          index_col=0) 
+    res_technologies = list(capacities.keys())
+    capacities_list = list()
+    for  t in res_technologies:
+        col_name = (technology.loc[technology["technology"] == t,"fuel"].iat[0] + "/" + t)
+        capacities[t] = capacities[t].rename(columns={"capacity": col_name})
+        capacities_list.append(capacities[t][col_name])
+    capacity_nuts = reduce(lambda  left,right: pd.merge(left,right,right_index=True,
+                                                         left_index=True), capacities_list)
     capacity_nuts = pd.merge(capacity_nuts, other_res, right_index=True, left_index=True, how="left").fillna(0)
-    
+
     plants = pd.DataFrame()
     for zone in zones:
         plants = pd.concat([plants, regionalize_capacities_country(nodes, zone, capacity_nuts, technology)])
+
     return plants
+
         
 def regionalize_capacities_country(nodes, zone, capacity_nuts, technology):
     # nodes = data.nodes.copy()

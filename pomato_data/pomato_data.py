@@ -268,9 +268,17 @@ class PomatoData():
         self.plants = pd.concat([self.plants, plants])
         self.plants.loc[self.plants.d_max.isna(), "d_max"] = 0
 
-    def process_availabilities(self):
+    def process_availabilities(self, solar_techs = ["solar park", "solar rooftop"], wind_techs = ["wind onshore"]):
+        '''
+        solar_techs:   list 
+            List with solar technologies to calculate availabilities for
+
+        wind_techs:   list 
+            List with wiind technologies to calculate availabilities for
+        '''
         
-        plants = self.plants[self.plants.technology.isin(["solar", "wind onshore"])]
+        # plants = self.plants[self.plants.technology.isin(["solar", "wind onshore"])]
+        plants = self.plants[self.plants.technology.isin(solar_techs + wind_techs)]
         nodes =  self.nodes[self.nodes.index.isin(plants.node)].copy()
         
         year = self.settings["weather_year"]
@@ -307,18 +315,18 @@ class PomatoData():
             condition_zone = plants.zone == zone
             nuts_areas = nuts_data.loc[nuts_data.country == zone, "name_short"].values
             avg_availability_pv = pv_availability[nuts_areas].mean(axis=1)
-            for plant in plants[(plants.technology == "solar") & condition_zone].index:
+            for plant in plants[(plants.technology.isin(solar_techs)) & condition_zone].index:
                 availability[plant] = avg_availability_pv
             
             avg_availability_wind = wind_availability[nuts_areas].mean(axis=1)
-            for plant in plants[(plants.technology == "wind onshore") & condition_zone].index:
+            for plant in plants[(plants.technology.isin(wind_techs)) & condition_zone].index:
                 availability[plant] = avg_availability_wind
         
         for zone in self.settings["grid_zones"]:
             condition_zone = plants.zone == zone
-            for plant in plants[(plants.technology == "solar") & condition_zone].index:
+            for plant in plants[(plants.technology.isin(solar_techs)) & condition_zone].index:
                 availability[plant] = pv_availability[nuts_to_nodes.loc[plants.loc[plant, "node"], "name_short"]]
-            for plant in plants[(plants.technology == "wind onshore") & condition_zone].index:
+            for plant in plants[(plants.technology.isin(wind_techs)) & condition_zone].index:
                 availability[plant] = wind_availability[nuts_to_nodes.loc[plants.loc[plant, "node"], "name_short"]]
         
         self.availability = add_timesteps(availability)
