@@ -234,12 +234,17 @@ class PomatoData():
                                   (self.demand_el.utc_timestamp < self.time_horizon["end"])]
         self.demand_el = self.demand_el.set_index("utc_timestamp")
         
-        self.demand_el = nodal_demand(self.wdir, list(self.zones.index), self.demand_el, self.nodes)
+        self.demand_el, self.household_demand_el = nodal_demand(self.wdir, list(self.zones.index), self.demand_el, self.nodes)
         # Set demand of missing Nodes to 0
         for node in [n for n in self.nodes.index if n not in self.demand_el.columns]:
             self.demand_el[node] = 0
         self.demand_el.index.name = "utc_timestamp"
         self.demand_el = add_timesteps(self.demand_el)
+
+        for node in [n for n in self.nodes.index if n not in self.household_demand_el.columns]:
+            self.household_demand_el[node] = 0
+        self.household_demand_el.index.name = "utc_timestamp"
+        self.household_demand_el = add_timesteps(self.household_demand_el)
     
     def process_res_plants(self):
         

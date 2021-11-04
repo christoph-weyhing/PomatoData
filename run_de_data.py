@@ -31,18 +31,17 @@ if __name__ == "__main__":
         wdir = Path(os.path.abspath(""))       
     data = PomatoData(wdir, settings)
 
-    # # %% DE Processing
-    # data.add_dcline("nDK", "nSE", 2000)
-    # data.create_basic_ntcs()
+# %% DE Processing
+    data.add_dcline("nDK", "nSE", 2000)
 
-    # # Remove small plants below a certain threshold 
-    # threshold = 1
-    # data.plants[data.plants.g_max > threshold].g_max.sum() / data.plants.g_max.sum()  
-    # len(data.plants[data.plants.g_max > threshold]) / len(data.plants[data.plants.g_max > 0])
+    # Remove small plants below a certain threshold 
+    threshold = 1
+    data.plants[data.plants.g_max > threshold].g_max.sum() / data.plants.g_max.sum()  
+    len(data.plants[data.plants.g_max > threshold]) / len(data.plants[data.plants.g_max > 0])
     
-    # data.plants = data.plants[data.plants.g_max > threshold]
-    # drop_plants = [p for p in data.availability.columns if p not in data.plants.index]
-    # data.availability = data.availability.drop(drop_plants, axis=1)
+    data.plants = data.plants[data.plants.g_max > threshold]
+    drop_plants = [p for p in data.availability.columns if p not in data.plants.index]
+    data.availability = data.availability.drop(drop_plants, axis=1)
     
     
     # if settings["year"] == 2030:

@@ -5,10 +5,13 @@ import pandas as pd
 
 def nodal_demand(ddir, countries, demand_el, nodes):
     nodal_demand = pd.DataFrame()
+    nodal_household_demand = pd.DataFrame()
     for country in countries:
-        nodal_demand = pd.concat([nodal_demand, get_nodal_demand(ddir, country, demand_el, nodes)], axis=1)
+        lp_node, lp_household_node = get_nodal_demand(ddir, country, demand_el, nodes)
+        nodal_demand = pd.concat([nodal_demand, lp_node], axis=1)
+        nodal_household_demand = pd.concat([nodal_household_demand, lp_household_node], axis=1)
 
-    return nodal_demand
+    return nodal_demand, nodal_household_demand
 
 def only_nuts3_zones(ddir):
     nuts3 = pd.read_csv(ddir.joinpath('data_in/demand/gdp_data/NUTS_AT_2013.csv'),
@@ -96,7 +99,7 @@ def get_nodal_demand(ddir, country, demand, nodes, scaling=None):
     
     if len(node_data) == 1:
         demand_el.columns = [node_data.id[0]]
-        return demand_el
+        return demand_el, pd.DataFrame()
 
     nuts3 = only_nuts3_zones(ddir)
     pop_nuts3, gva_nuts3 = load_nuts_data(ddir)
@@ -247,6 +250,7 @@ def get_nodal_demand(ddir, country, demand, nodes, scaling=None):
 
     lp_node = (lp_household_node + lp_commercial_node + lp_industry_node)
     lp_node.columns = node_data.id
+    lp_household_node.columns = node_data.id
 
     # Check whether the total load still corresponds with AGEB energy balance
     print("Calc", lp_node.sum().sum())
@@ -266,7 +270,7 @@ def get_nodal_demand(ddir, country, demand, nodes, scaling=None):
     # pd.DataFrame(lp_commercial_node.sum(axis=1)).rename(columns={0: 'Load Profile Commercial'}).plot(ax = base, color='pink',figsize=(20, 10), legend = 'Load Profile Commercial');
     # pd.DataFrame(lp_industry_node.sum(axis=1)).rename(columns={0: 'Load Profile Industry'}).plot(ax = base, color='purple',figsize=(20, 10), legend = 'Load Profile Industry');
     # %%
-    return lp_node
+    return lp_node, lp_household_node
 
 
 
