@@ -22,7 +22,7 @@ from pomato_data.demand import nodal_demand
 from pomato_data.res import (process_offshore_windhubs,
                               regionalize_res_capacities)
 from pomato_data.plants import decommission
-
+from pomato_data.storage import add_storage
 
 class PomatoData():
     
@@ -47,6 +47,7 @@ class PomatoData():
             self.process_plants()
             self.process_res_plants()
             self.decommission_plants()
+            self.process_storage()
 
             self.process_demand()
             self.marginal_costs()
@@ -354,6 +355,10 @@ class PomatoData():
             self.demand_el[n] = 0
         self.nodes = pd.concat([self.nodes, offshore_nodes])
 
+    def process_storage(self):
+        storages = add_storage(self.plants, self.technology, self.scenario)
+        self.plants = pd.concat([self.plants, storages])
+
     def create_basic_ntcs(self, commercial_exchange=True):
         # from physical cross border flows
         year = self.settings["weather_year"]
@@ -497,6 +502,7 @@ class PomatoData():
         
     def uniquify_marginal_costs(self):
         for mc in self.plants.mc_el.unique():
+            print(mc)
             condition = self.plants.mc_el == mc
             eps = 1/sum(condition)
             self.plants.loc[condition, "mc_el"] = [mc + eps*i for i in range(0, sum(condition))]
