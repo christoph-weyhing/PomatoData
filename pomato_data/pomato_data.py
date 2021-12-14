@@ -22,7 +22,7 @@ from pomato_data.demand import nodal_demand
 from pomato_data.res import (process_offshore_windhubs,
                               regionalize_res_capacities)
 from pomato_data.plants import decommission
-from pomato_data.storage import add_storage
+from pomato_data.storage import add_storage, process_battery_storage_level
 
 class PomatoData():
     
@@ -543,6 +543,10 @@ class PomatoData():
             storage_level_plants = pd.concat([storage_level_plants, pd.concat([t_start, tmp_storage_level, t_end])])
         
         self.storage_level = storage_level_plants.reset_index()[["timestep", "plant", "storage_level"]]
+
+        battery_storage_level = process_battery_storage_level(self.time_horizon["start"], self.time_horizon["end"],
+                                                              self.demand_el, self.plants)
+        self.storage_level = pd.concat([self.storage_level, battery_storage_level]).reset_index(drop=True)
 
     def decommission_plants(self):
         self.plants = decommission(self.plants, self.scenario, self.settings)

@@ -22,7 +22,7 @@ if __name__ == "__main__":
                             "zones":["DE"]},
         "co2_price": 60,
         "split_lines": True,
-        "time_horizon": "01.01.2019 - 31.12.2019",
+        "time_horizon": "01.01.2019 - 01.01.2020",
         }
     
     if Path(os.path.abspath("")).name != "PomatoData":
@@ -61,7 +61,9 @@ if __name__ == "__main__":
 #%% Save data set
     foldername = f"DE_{settings['year']}"
     data.save_to_csv(foldername)
-    
+
+#%% Data checks
+data.plants[data.plants.technology=="solar battery"].storage_capacity.sum()    
 #%% Testing 
     # # availability = data.availability
     # demand = data.demand_el

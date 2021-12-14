@@ -26,4 +26,4 @@ index,technology,fuel,eta,variable_om,plant_type
 24,csp,sun,1,0,solar
 25,wind onshore,wind,1,1,wind onshore
 26,wind offshore,wind,1,5,wind offshore
-27,battery,electricity,0.9,0,storage
+27,solar battery,electricity,0.9,0,solar battery
