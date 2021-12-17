@@ -10,7 +10,7 @@ def add_storage(plants, technology, scenario):
 # def add_household_battery(plants, technology, battery_g=10000, battery_cap=(9800+560)):
 def add_solar_battery(plants, technology, scenario):
     solar_battery = pd.DataFrame()
-    for ind, row in scenario.loc[scenario.group == "battery"].iterrows():
+    for ind, row in scenario.loc[scenario.group == "solar battery"].iterrows():
         pv_household = plants.loc[(plants["technology"]=="solar rooftop") & (plants["zone"]==row["country"])].copy()
         # scale from GW/GWh to MW/MWh
         power_factor = row["capaConv"]*1000/pv_household.g_max.sum()
@@ -20,13 +20,13 @@ def add_solar_battery(plants, technology, scenario):
         
         solar_battery_tmp["storage_capacity"] = solar_battery_tmp["g_max"]*capacity_factor
         solar_battery_tmp["g_max"] = solar_battery_tmp["g_max"]*power_factor
+        solar_battery_tmp["d_max"] = solar_battery_tmp["g_max"]
         solar_battery_tmp["eta"] = technology["eta"]
         solar_battery_tmp["fuel"] = technology["fuel"]
         solar_battery_tmp["technology"] = technology["technology"]
         solar_battery_tmp["index"] = solar_battery_tmp["node"].str.cat(others=solar_battery_tmp["fuel"].str.cat(solar_battery_tmp["technology"], sep='/'), sep='_')
         solar_battery_tmp.set_index("index", inplace=True)
         solar_battery_tmp["plant_type"] = technology["plant_type"]
-        solar_battery_tmp["d_max"] = solar_battery_tmp["g_max"]*power_factor
         
         solar_battery = pd.concat([solar_battery, solar_battery_tmp])
         
@@ -37,7 +37,7 @@ def process_battery_storage_level(t_start, t_end, demand, plants):
     timestep_index = demand.loc[demand.utc_timestamp.isin(timesteps), "utc_timestamp"].reset_index()
     
     storage_level_battery = pd.DataFrame()
-    for ind, p in plants.loc[plants.technology=="battery"].iterrows():
+    for ind, p in plants.loc[plants.technology=="solar battery"].iterrows():
         tmp_level = pd.DataFrame(timestep_index['timestep'])
         tmp_level["plant"] = ind
         tmp_level["storage_level"] = 0

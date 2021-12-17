@@ -21,9 +21,9 @@ index,technology,fuel,eta,variable_om,plant_type
 19,geothermal,sun,1,0,other_res
 20,wind,wind,1,0,wind
 21,solar,sun,1,0,solar
-22,solar rooftop,sun,1,0,solar
-23,solar park,sun,1,0,solar
-24,csp,sun,1,0,solar
+22,solar rooftop,sun,1,0,solar rooftop
+23,solar park,sun,1,0,solar park
+24,csp,sun,1,0,solar csp
 25,wind onshore,wind,1,1,wind onshore
 26,wind offshore,wind,1,5,wind offshore
 27,solar battery,electricity,0.9,0,solar battery

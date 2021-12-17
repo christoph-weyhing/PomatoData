@@ -4,6 +4,7 @@ import datetime as dt
 import itertools
 import shutil
 from pathlib import Path
+from functools import reduce
 
 import geopandas as gpd
 import numpy as np
@@ -55,6 +56,7 @@ class PomatoData():
             self.process_availabilities()
             self.process_hydro_plants()
             self.process_offshore_plants()
+            self.process_storage_availability()
             self.uniquify_marginal_costs()
             
             self.process_storage_level()
@@ -269,7 +271,7 @@ class PomatoData():
         plants = plants[plants.zone.isin(self.zones.index)]
         plants = match_plants_nodes(plants, self.nodes)
         
-        self.plants["d_max"] = 0
+        # self.plants["d_max"] = 0
         self.plants = self.plants[~(self.plants.fuel == "hydro")]
         self.plants = pd.concat([self.plants, plants])
         self.plants.loc[self.plants.d_max.isna(), "d_max"] = 0
@@ -336,6 +338,33 @@ class PomatoData():
                 availability[plant] = wind_availability[nuts_to_nodes.loc[plants.loc[plant, "node"], "name_short"]]
         
         self.availability = add_timesteps(availability)
+
+    def process_storage_availability(self):
+        # add solar battery charging availabilities
+        condition = self.availability.columns.str.contains("solar rooftop") 
+        solar_rooftop_availability = self.availability.loc[:, condition]
+        solar_rooftop_availability.columns = [str.split('_')[0] for str in solar_rooftop_availability.columns]
+
+        solar_battery = self.plants[self.plants.plant_type == 'solar battery']
+        solar_battery_availability = pd.DataFrame(index=solar_rooftop_availability.index)
+        for n in solar_battery.node.values:
+            col = n+"_electricity/solar battery"
+            cond = (self.plants.node==n)&(self.plants.technology=='solar rooftop')
+            solar_battery_availability.loc[:,col] = solar_rooftop_availability.loc[:,n].values * \
+                self.plants.loc[cond, 'g_max'].values / solar_battery.loc[solar_battery.node==n, 'd_max'].values 
+
+        # add other storage charging availabilities
+        storage_availability = pd.DataFrame(index=solar_rooftop_availability.index)
+        condition = (~self.plants.storage_capacity.isna())&(~(self.plants.plant_type=="solar battery"))
+        col_names = [stor.node + '_' + stor.fuel + '/' + stor.plant_type for ind, stor in self.plants.loc[condition].iterrows()]
+        storage_availability.loc[:, col_names] = 1
+
+        # concat
+        data_frames = [self.availability, storage_availability, solar_battery_availability]
+        self.availability = reduce(lambda  left,right: pd.merge(left,right,left_index=True,right_index=True,
+                                            how='outer'), data_frames)
+
+
 
     def process_offshore_plants(self):
         weather_year = self.settings["weather_year"]
