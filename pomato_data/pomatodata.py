@@ -1,11 +1,3 @@
-
-<<<<<<< HEAD:pomato_data/pomatodata.py
-
-#%% Import packages
-import os
-=======
->>>>>>> main:pomato_data/pomato_data.py
-
 import datetime as dt
 import itertools
 import shutil
@@ -18,15 +10,6 @@ import pyproj
 import shapely
 from scipy import sparse
 
-<<<<<<< HEAD:pomato_data/pomatodata.py
-homedir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(homedir)
-from auxiliary import get_countries_regions_ffe, distance, \
-    load_data_structure, add_timesteps, match_plants_nodes
-from res import regionalize_res_capacities, process_offshore_windhubs
-import res
-from demand import nodal_demand
-=======
 from shapely.geometry import LineString, Point
 
 from pomato_data.auxiliary import (add_timesteps, distance,
@@ -36,8 +19,6 @@ from pomato_data.auxiliary import (add_timesteps, distance,
 from pomato_data.demand import nodal_demand
 from pomato_data.res import (process_offshore_windhubs,
                               regionalize_res_capacities)
-
->>>>>>> main:pomato_data/pomato_data.py
 
 # %% Define class
 class PomatoData():
@@ -580,18 +561,6 @@ if __name__ == "__main__":
         # "grid_zones": ["DE", "FR", "BE", "LU", "NL"],
         "grid_zones": ["DE"],
         "weather_year": 2019,
-<<<<<<< HEAD:pomato_data/pomatodata.py
-        "capacity_year": 2030, 
-        # "capacity_year": 2020, 
-        "co2_price": 60,
-        "split_lines": False,
-        # "time_horizon": "01.11.2019 - 30.11.2019",
-        "time_horizon": "01.03.2019 - 05.03.2019",
-        }
-    os.path.dirname(os.path.abspath(__file__))
-    wdir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    data = PomatoData(wdir, settings)
-=======
         # "capacity_year": 2030, 
         "capacity_year": 2022, 
         "co2_price": 60,
@@ -607,4 +576,4 @@ if __name__ == "__main__":
 
 
 
->>>>>>> main:pomato_data/pomato_data.py
+

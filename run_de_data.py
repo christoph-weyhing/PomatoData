@@ -1,18 +1,10 @@
 
 #%% Import packages
 import os
-<<<<<<< HEAD
-import sys
-from pathlib import Path
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from pomato_data import PomatoData
-=======
 import pandas as pd
 from pathlib import Path
 from pomato_data.pomato_data import PomatoData
 import pomato_data
->>>>>>> main
 
 #%%
 if __name__ == "__main__":  
@@ -34,10 +26,6 @@ if __name__ == "__main__":
         "time_horizon": "01.01.2019 - 31.12.2019",
         }
     
-<<<<<<< HEAD
-    wdir = Path(os.path.dirname(os.path.abspath(__file__)))
-=======
->>>>>>> main
     data = PomatoData(wdir, settings)
     
     # %%
@@ -137,10 +125,3 @@ if __name__ == "__main__":
     # t = t.pivot(index="zone", columns=("fuel"), values="g_max")
     # t = t.pivot(index="zone", columns=("fuel", "technology"), values="g_max")
     # t.plot.bar(stacked=True)
-<<<<<<< HEAD
-
-
-# %%
-=======
-    # t.loc["DE"]
->>>>>>> main

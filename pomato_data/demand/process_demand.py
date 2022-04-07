@@ -2,14 +2,7 @@
 
 import pandas as pd
 from pathlib import Path
-<<<<<<< HEAD
-import sys
 
-file_dir = os.path.dirname(os.path.abspath(__file__))
-package_dir = os.path.dirname(os.path.dirname(file_dir))
-sys.path.append(package_dir)
-=======
->>>>>>> main
 from pomato_data.auxiliary import get_countries_regions_ffe
    
 def get_demand_entso_e(wdir, year):
@@ -63,16 +56,10 @@ def get_demand_entso_e(wdir, year):
 
 #%%
 if __name__ == "__main__": 
-<<<<<<< HEAD
-    
-    wdir = Path(package_dir)
-    year = 2020
-=======
     import pomato_data
 
     wdir = Path(pomato_data.__path__[0]).parent 
     year = 2015
->>>>>>> main
     demand = get_demand_entso_e(wdir, year)
     demand.to_csv(wdir.joinpath(f'data_out/demand/demand_{year}.csv'))
     

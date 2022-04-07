@@ -9,15 +9,9 @@ import geopandas as gpd
 
 from shapely.geometry import Point, LineString
 
-<<<<<<< HEAD
-homedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-os.chdir(homedir)
-from auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
-from res import anymod_installed_capacities
-=======
 from pomato_data.auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
 from pomato_data.res import anymod_installed_capacities, input_installed_capacities
->>>>>>> main
+
 
 
 def process_offshore_windhubs(wdir, nodes, settings):
