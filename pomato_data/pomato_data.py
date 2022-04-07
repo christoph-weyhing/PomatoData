@@ -56,7 +56,7 @@ class PomatoData():
             self.process_availabilities()
             self.process_hydro_plants()
             self.process_offshore_plants()
-            self.process_storage_availability()
+            # self.process_storage_availability()
             self.uniquify_marginal_costs()
             
             self.process_storage_level()
@@ -403,7 +403,7 @@ class PomatoData():
         max_flow = exchange.groupby(["from_zone", "to_zone"]).quantile(0.85).reset_index()
         self.ntc["ntc"] = 0
         for (f,t) in self.ntc.index:
-            max_flow.loc[(max_flow.from_zone == f) & (max_flow.to_zone == t), "value"].max()
+            self.ntc.loc[(f,t), "ntc"] = max_flow.loc[(max_flow.from_zone == f) & (max_flow.to_zone == t), "value"].max()
                 
         self.ntc = self.ntc.reset_index().fillna(0)
         self.ntc.columns = ["zone_i", "zone_j", "ntc"]
@@ -543,7 +543,7 @@ class PomatoData():
         year = self.settings["weather_year"]
         storage_level = pd.read_csv(self.wdir.joinpath(f'data_out/hydro/storage_level_{year}.csv'), index_col=0)
         storage_level = storage_level.reset_index(drop=True)
-        storage_level.utc_timestamp = pd.to_datetime(storage_level.utc_timestamp).astype('datetime64[ns]')
+        storage_level.utc_timestamp = pd.to_datetime(storage_level.utc_timestamp).astype('datetime64[ns]') + pd.Timedelta(value=24, unit="hours")
         storage_level["storage_level"] = storage_level["storage_level"] / (1.25 * storage_level.groupby("zone").max().loc[storage_level.zone, "storage_level"].values)
                 
         storage_level = storage_level[storage_level.zone.isin(self.plants.loc[self.plants.plant_type == "hydro_res", "zone"])]

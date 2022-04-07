@@ -1,5 +1,6 @@
 #%%
 import os
+import numpy as np
 from pathlib import Path
 from pomato_data.pomato_data import PomatoData
 import pandas as pd
@@ -8,62 +9,84 @@ from pomato_data.res import capacities
 
 #%%
 
-if __name__ == "__main__":  
+settings = {
+    "grid_zones": ["DE"],
+    "future": True,     # create future scenario or data set for present
+    "weather_year": 2019,
+    # "capacity_year": 2030,
+    "scenario": 'NEP_C_2030_ext_anymod',    # name of the csv file in folder data_out/extension containing overall installed power data
+    "year": 2030,   # target year of data set
+    "decommissioning": {"method":"linear",
+                        "fuels":["lignite", "hard coal", "uran", "gas", "oil"],
+                        "zones":["DE"]},
+    "co2_price": 60,
+    "split_lines": True,
+    "time_horizon": "01.01.2019 - 01.01.2020", 
+    }
 
-    settings = {
-        "grid_zones": ["DE"],
-        "future": True,     # create future scenario or data set for present
-        "weather_year": 2019,
-        # "capacity_year": 2030,
-        "scenario": 'NEP_C_2030_ext_anymod',    # name of the csv file in folder data_out/extension containing overall installed power data
-        "year": 2030,   # target year of data set
-        "decommissioning": {"method":"linear",
-                            "fuels":["lignite", "hard coal", "uran", "gas", "oil"],
-                            "zones":["DE"]},
-        "co2_price": 60,
-        "split_lines": True,
-        "time_horizon": "01.01.2019 - 01.01.2020",
-        }
-    
-    if Path(os.path.abspath("")).name != "PomatoData":
-        raise FileNotFoundError("Please Execute the script in the repository itself, use os.chdir() to change path")
-    else: 
-        wdir = Path(os.path.abspath(""))       
-    data = PomatoData(wdir, settings)
+if Path(os.path.abspath("")).name != "PomatoData":
+    raise FileNotFoundError("Please Execute the script in the repository itself, use os.chdir() to change path")
+else: 
+    wdir = Path(os.path.abspath(""))
+
+# %%       
+data = PomatoData(wdir, settings)
+
+# # %% Data tests
+# stor = data.storage_level.pivot(index="timestep", columns="plant", values="storage_level")
+
+# %% 
+# t_start = settings["time_horizon"].split(" - ")[0]
+# t_end = settings["time_horizon"].split(" - ")[1]
+# timesteps = pd.date_range(t_start, t_end, freq='168H').values
+# timesteps[1:] = timesteps[1:] - pd.Timedelta(value=1, unit="hours")
+
+# # %%
+# year = 2019
+# storage_level = pd.read_csv(data.wdir.joinpath(f'data_out/hydro/storage_level_{year}.csv'), index_col=0)
+# storage_level = storage_level.reset_index(drop=True)
+# start = pd.to_datetime(storage_level["utc_timestamp"].iloc[1])
+# storage_level.utc_timestamp = pd.to_datetime(storage_level.utc_timestamp).astype('datetime64[ns]') + pd.Timedelta(value=23, unit="hours")
+# storage_level.loc[1,"utc_timestamp"] = start
+
+# # %%
+# plants = data.plants
+# demand = data.demand_el
+# t_start = data.settings["time_horizon"].split(" - ")[0]
+# t_end = data.settings["time_horizon"].split(" - ")[1]
+# timesteps = pd.date_range(t_start, t_end, freq='168H').tolist()
+# timesteps[1:] = [t - pd.Timedelta(value=1, unit="hours") for t in timesteps[1:]]
+# timesteps.append(pd.Timestamp(t_end) - pd.Timedelta(value=1, unit="hours"))
+# timestep_index = demand.loc[demand.utc_timestamp.isin(timesteps), "utc_timestamp"]
+
+# # %% 
+
+# storage_level_battery = pd.DataFrame()
+# for ind, p in plants.loc[plants.technology=="solar battery"].iterrows():
+#     tmp_level = pd.DataFrame(index=timestep_index.index)
+#     tmp_level["plant"] = ind
+#     tmp_level["storage_level"] = 0
+#     storage_level_battery = pd.concat([storage_level_battery, tmp_level])
 
 # %% DE Processing
-    data.add_dcline("nDK", "nSE", 2000)
+data.add_dcline("nDK", "nSE", 2000)
 
-    # Remove small plants below a certain threshold 
-    threshold = 1
-    data.plants[data.plants.g_max > threshold].g_max.sum() / data.plants.g_max.sum()  
-    len(data.plants[data.plants.g_max > threshold]) / len(data.plants[data.plants.g_max > 0])
-    
-    data.plants = data.plants[data.plants.g_max > threshold]
-    drop_plants = [p for p in data.availability.columns if p not in data.plants.index]
-    data.availability = data.availability.drop(drop_plants, axis=1)
-    
-    
-    # if settings["year"] == 2030:
-    #     # Decommissioning (manual)
+# Remove small plants below a certain threshold 
+threshold = 5
+data.plants[data.plants.g_max > threshold].g_max.sum() / data.plants.g_max.sum()  
+len(data.plants[data.plants.g_max > threshold]) / len(data.plants[data.plants.g_max > 0])
 
-    #     condition_lignite = data.plants.fuel == "lignite"
-    #     condition_coal = data.plants.fuel == "hard coal"
-    #     condition_nuclear = data.plants.fuel == "uran"
-    #     condition_gas= data.plants.fuel == "gas"
-    #     condition_de = data.plants.zone == "DE"
-    #     data.plants = data.plants.loc[~(condition_lignite & condition_de)]
-    #     data.plants = data.plants.loc[~(condition_nuclear & condition_de)]
-    #     data.plants.loc[(condition_gas & condition_de), "g_max"] *= 1.5
-        
-    #     data.plants.loc[(condition_nuclear|condition_coal|condition_lignite), "g_max"] *= 0.7
+data.plants = data.plants[data.plants.g_max > threshold]
+drop_plants = [p for p in data.availability.columns if p not in data.plants.index]
+data.availability = data.availability.drop(drop_plants, axis=1)
     
 #%% Save data set
-    foldername = f"DE_{settings['year']}"
-    data.save_to_csv(foldername)
+foldername = f"DE_{settings['year']}"
+data.save_to_csv(foldername)
 
 #%% Data checks
-data.plants[data.plants.technology=="solar battery"].storage_capacity.sum()    
+# data.plants[data.plants.technology=="solar battery"].storage_capacity.sum() 
+
 #%% Testing 
     # # availability = data.availability
     # demand = data.demand_el
@@ -149,9 +172,42 @@ for c in countries:
     # else:
     #     pv_capacities.loc[pv_capacities.country == c, "capacity"] = 0
 
+# %% Workbench NTCs
+import itertools
+commercial_exchange=True
+# from physical cross border flows
+year = data.settings["weather_year"]
+if commercial_exchange:
+    exchange = pd.read_csv(data.wdir.joinpath(f'data_out/exchange/commercial_exchange_{year}.csv'), index_col=0)
+else:
+    exchange = pd.read_csv(data.wdir.joinpath(f'data_out/exchange/physical_crossborder_flow_{year}.csv'), index_col=0)
+
+exchange.utc_timestep = pd.to_datetime(exchange.utc_timestep).astype('datetime64[ns]')
+ntc = pd.DataFrame(index=pd.MultiIndex.from_tuples([(f,t) for (f,t) in itertools.permutations(list(data.zones.index), 2)]))
+
 # %%
-technology = pd.read_csv(wdir.joinpath("data_out/technology/technology.csv"), index_col=0)
+max_flow = exchange.groupby(["from_zone", "to_zone"]).quantile(0.85).reset_index()
+ntc["ntc"] = 0
 # %%
-t = 'solar rooftop'
-technology.loc[technology["technology"] == t,"fuel"].iat[0] + "/" + t
+for (f,t) in ntc.index:
+    ntc.loc[(f,t), "ntc"] = max_flow.loc[(max_flow.from_zone == f) & (max_flow.to_zone == t), "value"].max()
+
+# %%        
+ntc = ntc.reset_index().fillna(0)
+ntc.columns = ["zone_i", "zone_j", "ntc"]
+# %% 
+# Set NTC to zero if no physical connection exists. 
+for (f,t) in zip(ntc.zone_i, ntc.zone_j):
+    lines, dclines = [], []
+    lines += list(data.lines.index[(data.lines.node_i.isin(data.nodes.index[data.nodes.zone == f]))&(data.lines.node_j.isin(data.nodes.index[data.nodes.zone == t])) ])
+    lines += list(data.lines.index[(data.lines.node_i.isin(data.nodes.index[data.nodes.zone == t]))&(data.lines.node_j.isin(data.nodes.index[data.nodes.zone == f]))])
+    dclines += list(data.dclines.index[(data.dclines.node_i.isin(data.nodes.index[data.nodes.zone == f]))&(data.dclines.node_j.isin(data.nodes.index[data.nodes.zone == t])) ])
+    dclines += list(data.dclines.index[(data.dclines.node_i.isin(data.nodes.index[data.nodes.zone == t]))&(data.dclines.node_j.isin(data.nodes.index[data.nodes.zone == f]))])
+
+    ntc_values = ntc.loc[(ntc.zone_i == f) & (ntc.zone_j == t), "ntc"].sum()
+    if len(lines) == 0 and len(dclines) == 0:
+        ntc.loc[(ntc.zone_i == f) & (ntc.zone_j == t), "ntc"] = 0
+    elif ntc_values < data.dclines.loc[dclines, "capacity"].sum():  #all(self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] == 0):
+        ntc.loc[(ntc.zone_i == f) & (ntc.zone_j == t), "ntc"] = data.dclines.loc[dclines, "capacity"].sum()
+
 # %%
