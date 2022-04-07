@@ -3,7 +3,7 @@
 import os
 import pandas as pd
 from pathlib import Path
-from pomato_data.pomato_data import PomatoData
+from pomato_data import PomatoData
 import pomato_data
 
 #%%
@@ -17,6 +17,8 @@ if __name__ == "__main__":
         
     settings = {
         "grid_zones": ["DE"],
+        "except_zones": [],
+        "include_neighbors": False,
         "weather_year": 2019,
         "capacity_year": 2022, 
         "co2_price": 60,
