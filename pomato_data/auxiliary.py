@@ -7,13 +7,12 @@ import shapely
 import requests 
 import json 
 
+import pomato_data
+
 def get_countries_regions_ffe(force_recalc=False):
     # Download the region types
-    try:
-        filepath = Path(__file__).parent.parent
-    except NameError:
-        filepath = Path(r"C:\Users\riw\Documents\repositories\pomato_data")
-        
+
+    filepath = Path(pomato_data.__path__[0]).parent  
     if filepath.joinpath("data_out/zones/zones.csv").is_file() and not force_recalc:
         zones = pd.read_csv(filepath.joinpath("data_out/zones/zones.csv"), index_col=0)
         zones['geometry'] = zones['geometry'].apply(shapely.wkt.loads)
@@ -55,11 +54,8 @@ def get_countries_regions_ffe(force_recalc=False):
 
 def get_eez_ffe(force_recalc=False, geometry=True):
     # Download the region types
-    try:
-        filepath = Path(__file__).parent.parent
-    except NameError:
-        filepath = Path(r"C:\Users\riw\Documents\repositories\pomato_data")
-    
+
+    filepath = Path(pomato_data.__path__[0]).parent      
     if filepath.joinpath("data_out/zones/eez.csv").is_file() and not force_recalc:
         if geometry:
             eez = pd.read_csv(filepath.joinpath("data_out/zones/eez.csv"), index_col=0)
@@ -90,8 +86,8 @@ def get_eez_ffe(force_recalc=False, geometry=True):
         eez = pd.merge(eez_region, zones, on="iso_name")
         eez["count"] = ""
         for name in eez.name.unique():
-            cond = eez.name == name
-            eez.loc[cond, "count"] = [str(i + 1) for i in range(sum(cond))]
+            condition = eez.name == name
+            eez.loc[condition, "count"] = [str(i + 1) for i in range(sum(condition))]
             
         eez.loc[:, "name"] = eez.name + "_" + eez["count"]
         eez = eez.drop("count", axis=1)
@@ -109,37 +105,52 @@ def distance(lat_nodes, lon_nodes, lat_plants, lon_plants):
     lat_plants *= np.pi / 180
     lon_plants *= np.pi / 180
 
-    dlon = lon_nodes - lon_plants
-    dlat = lat_nodes - lat_plants
+    delta_lon = lon_nodes - lon_plants
+    delta_lat = lat_nodes - lat_plants
 
-    a = np.sin(dlat / 2)**2 + np.cos(lat_nodes) * np.cos(lat_plants) * np.sin(dlon / 2)**2
+    a = np.sin(delta_lat / 2)**2 + np.cos(lat_nodes) * np.cos(lat_plants) * np.sin(delta_lon / 2)**2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     return R * c
 
 def match_plants_nodes(plants, nodes):
     """Assign nearest node to plants. Subject to penalty depending on voltage level"""
     # plants, nodes = offshore_plants.copy(), offshore_nodes.copy()
-    # nodes = self.nodes.copy()
-
+    # plants = data.plants.copy()
+    # nodes = data.nodes.copy()
+    # p ="H978"
+    # plants.loc[p, "node"] = None
+    
     grid_node = []
     condition = plants.node.isna()
     for p in plants[condition].index:
-        
+        # 1
         nodes_in_area = nodes[nodes.zone == plants.zone[p]].copy()
-        
-        nodes_in_area["distance"] = distance(nodes_in_area.lat.values, nodes_in_area.lon.values,
-                                             plants.loc[p, "lat"], plants.loc[p, "lon"])
-        if plants.loc[p, "g_max"] > 1000:       
-            nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map({500: 1, 380: 1.2, 220: 100, 132: 100})
-            # nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map({500: 1, 380: 1, 220: 1, 132: 1})
+        if "n" + plants.zone[p] in nodes_in_area.index:
+            grid_node.append("n" + plants.zone[p])
         else:
-            nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map({500: 1, 380: 1.2, 220: 1.5, 132: 2})
-            # nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map({500: 1, 380: 1, 220: 1, 132: 1})
-        nodes_in_area.loc[:, "distance"] *= nodes_in_area["distance_penalty"]
-        grid_node.append(nodes_in_area["distance"].idxmin())
-        if nodes_in_area["distance"].min() > 100 and len(nodes_in_area) > 10:
-            zone = nodes.loc[grid_node[-1], "zone"]
-            print(f"Plant {p} is more than 100 km away from node {grid_node[-1]} in zone {zone}")
+            nodes_in_area["distance"] = distance(
+                nodes_in_area.lat.values, nodes_in_area.lon.values, 
+                plants.loc[p, "lat"], plants.loc[p, "lon"])
+            
+            
+            if plants.loc[p, "g_max"] > 1000:
+                weighting = {500: 1, 380: 1.2, 220: 100, 132: 1000}
+                nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map(weighting)
+            elif plants.loc[p, "g_max"] > 500:
+                weighting = {500: 1, 380: 1.2, 220: 2, 132: 5}
+                nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map(weighting)
+            else:
+                weighting = {500: 1, 380: 1.2, 220: 1.3, 132: 1.4}
+                nodes_in_area["distance_penalty"] = nodes_in_area["voltage"].map(weighting)
+                
+            nodes_in_area.loc[:, "distance"] *= nodes_in_area["distance_penalty"]
+            
+            grid_node.append(nodes_in_area["distance"].idxmin())
+            
+            if nodes_in_area["distance"].min() > 100 and len(nodes_in_area) > 10:
+                zone = nodes.loc[grid_node[-1], "zone"]
+                print(f"Plant {p} is more than 100 km away from node {grid_node[-1]} in zone {zone}")
+            
     plants.loc[condition.values, "node"] = grid_node  
     
     return plants 
@@ -185,14 +196,14 @@ def add_timesteps(df):
 # %%
 
 if __name__ == "__main__":
-    wdir = Path(r"C:\Users\riw\Documents\repositories\pomato_data")
+    wdir = Path(pomato_data.__path__[0]).parent  
+
     zones, nuts_data = get_countries_regions_ffe(force_recalc=True)
-    filepath = Path(r"C:\Users\riw\Documents\repositories\pomato_data")
-    zones.to_csv(wdir.joinpath('data_out/zones/zones.csv'))
+    # zones.to_csv(wdir.joinpath('data_out/zones/zones.csv'))
     # nuts_data.to_csv(wdir.joinpath('data_out/zones/nuts_data.csv'))
     
     # eez_region = get_eez_ffe(force_recalc=True)
-    eez = get_eez_ffe()
+    # eez = get_eez_ffe()
     # eez.drop("geometry", axis=1).to_csv(wdir.joinpath('data_out/zones/eez_wo_geometry.csv'))
     # eez.to_csv(wdir.joinpath('data_out/zones/eez.csv'))
     

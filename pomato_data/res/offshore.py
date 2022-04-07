@@ -9,16 +9,23 @@ import geopandas as gpd
 
 from shapely.geometry import Point, LineString
 
+<<<<<<< HEAD
 homedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(homedir)
 from auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
 from res import anymod_installed_capacities
+=======
+from pomato_data.auxiliary import get_countries_regions_ffe, match_plants_nodes, get_eez_ffe
+from pomato_data.res import anymod_installed_capacities, input_installed_capacities
+>>>>>>> main
 
 
-def process_offshore_windhubs(wdir, nodes, weather_year, capacity_year):
+def process_offshore_windhubs(wdir, nodes, settings):
     # weather_year, capacity_year = 2019, 2020
-    
-    offshore_plants, offshore_nodes = create_offshore_hubs(wdir, weather_year, capacity_year)
+    weather_year = settings["weather_year"]
+    capacity_year = settings["capacity_year"]
+
+    offshore_plants, offshore_nodes = create_offshore_hubs(wdir, settings)
 
     offshore_connections = pd.read_csv(wdir.joinpath("data_in/nodes/offshore_connections.csv"))
     offshore_connections = offshore_connections[offshore_connections.node.isin(nodes.index)]
@@ -32,7 +39,9 @@ def process_offshore_windhubs(wdir, nodes, weather_year, capacity_year):
     add_dclines_index = []
     for node_j in offshore_nodes.index:
         onshore_nodes = offshore_connections.loc[offshore_connections.offshore_hub == node_j, "node"]
-        if onshore_nodes.empty:
+        zone = offshore_nodes.loc[node_j, "zone"]
+        
+        if onshore_nodes.empty and ("n" + zone in nodes.index):
             zone = offshore_nodes.loc[node_j, "zone"]
             node_i = "n" + zone
             geometry = LineString([Point(nodes.loc[node_i, ["lon", "lat"]]), 
@@ -71,11 +80,13 @@ def process_offshore_windhubs(wdir, nodes, weather_year, capacity_year):
     
     return offshore_plants, offshore_nodes, dclines, availability
 
-def create_offshore_hubs(wdir, weather_year, capacity_year):
+def create_offshore_hubs(wdir, settings):
     # capacity_year = 2019
     eez = get_eez_ffe()
     # eez = eez.set_index("name")
     # eez.loc[["BEL_north_sea_1"], :].plot()
+    weather_year = settings["weather_year"]
+    capacity_year = settings["capacity_year"]
     
     country_data, nuts_data = get_countries_regions_ffe()    
     
@@ -84,14 +95,14 @@ def create_offshore_hubs(wdir, weather_year, capacity_year):
         name = eez.loc[z, "name"]
         zone = eez.loc[z, "zone"]
         idx = "n" + name
-        lon, lat = eez.loc[z, "geometry"].centroid.coords[0]
+        lon, lat = eez.loc[z, "geometry"].representative_point().coords[0]
         offshore_nodes_data.append([idx, 500, name, lat, lon, zone, "", False, True])
         offshore_nodes_index.append(idx)
     cols = ['substation', 'voltage', 'name', 'lat', 'lon', 'zone', 'info', 'demand', 'slack']
     offshore_nodes = pd.DataFrame(index=offshore_nodes_index, columns=cols,
                                   data=offshore_nodes_data)
     
-    corrd_correction = {
+    coordinate_correction = {
         "nDEU_baltic_sea_1": (54.753567, 13.974048),
         "nDNK_baltic_sea_1": (56.574315, 11.634032),
         "nDNK_north_sea_1": (56.425272, 7.825166),
@@ -102,12 +113,13 @@ def create_offshore_hubs(wdir, weather_year, capacity_year):
         "nESP_atlantic_2": (36.415398, -7.185952),
         }
     
-    for n in corrd_correction:
-        offshore_nodes.loc[n, ["lat", "lon"]] = corrd_correction[n]
+    for n in coordinate_correction:
+        offshore_nodes.loc[n, ["lat", "lon"]] = coordinate_correction[n]
     
-    installed_capacities = anymod_installed_capacities(wdir, capacity_year)
-    installed_capacities.xs("wind offshore", level=1)
-    installed_capacities.xs("stock", level=1)
+    if settings["capacity_source"] == "anymod":
+        installed_capacities = anymod_installed_capacities(wdir, settings["capacity_file"], capacity_year)
+    else:
+        installed_capacities = input_installed_capacities(wdir, settings["capacity_file"])
     
     offshore_plants = offshore_nodes[['name', 'lat', 'lon', 'zone']].copy()
     eez.loc[:, "name"] = "n" +  eez.name
@@ -118,8 +130,8 @@ def create_offshore_hubs(wdir, weather_year, capacity_year):
     for zone in offshore_plants.zone.unique():
         if zone in installed_capacities.xs("wind offshore", level=1).index:
             # zone = "DE"
-            capacity = installed_capacities.loc[(zone, "wind offshore"), "capaConv"]*1000
-            
+            capacity = installed_capacities.loc[(zone, "wind offshore"), "value"]
+
             tmp = eez.loc[eez.zone == zone, ["id_region", "name"]].set_index("id_region")
             
             tmp["g_max"] = availability_factor.loc[tmp.index] / availability_factor.loc[tmp.index].sum() * capacity
@@ -149,8 +161,9 @@ def create_offshore_hubs(wdir, weather_year, capacity_year):
     
 # %%
 if __name__ == "__main__": 
+    import pomato_data
     
-    wdir = Path(r"C:\Users\riw\Documents\repositories\pomato_data")
+    wdir = Path(pomato_data.__path__[0]).parent 
     offshore_plants, offshore_nodes = create_offshore_hubs(wdir, 2019, 2020)
     # offshore_plants.to_csv(wdir.joinpath("data_out/res_capacity/offshore.csv"))
     # offshore_nodes.to_csv(wdir.joinpath("data_out/res_capacity/offshore_nodes.csv"))

@@ -1,39 +1,22 @@
 
 
-import os
-import requests
 import pandas as pd
 from pathlib import Path
+<<<<<<< HEAD
 import sys
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 package_dir = os.path.dirname(os.path.dirname(file_dir))
 sys.path.append(package_dir)
+=======
+>>>>>>> main
 from pomato_data.auxiliary import get_countries_regions_ffe
-
-def get_demand(wdir):
-    zones, nuts_data = get_countries_regions_ffe()    
-    header = pd.read_csv(wdir.joinpath("data_in/demand/time_series_60min_singleindex.csv"), header=0, nrows=1)
-    read_cols = ["utc_timestamp"]
-    col_rename = {}
-    for c in zones.index:
-        if c + "_load_actual_entsoe_transparency" in header.columns:
-            read_cols.append(c + "_load_actual_entsoe_transparency")
-            col_rename[c + "_load_actual_entsoe_transparency"] = c
-    read_cols.append("GB_GBN_load_actual_entsoe_transparency")
-    col_rename["GB_GBN_load_actual_entsoe_transparency"] = "UK"
-    
-    demand = pd.read_csv(wdir.joinpath("data_in/demand/time_series_60min_singleindex.csv"),
-                              header=0, usecols=read_cols)
-    demand = demand.rename(columns=col_rename)
-    demand.utc_timestamp = pd.to_datetime(demand.utc_timestamp).astype('datetime64[ns]')
-    return demand
-    
+   
 def get_demand_entso_e(wdir, year):
     country_data, nuts_data = get_countries_regions_ffe()    
     usecols = ["DateTime", "AreaTypeCode", "MapCode", "TotalLoadValue"]
     
-    file_dir = wdir.joinpath("data_in\demand\ensto-e")
+    file_dir = wdir.joinpath("data_in/demand/ensto-e")
 
     files = [file for file in file_dir.glob("*.csv") if str(year) in str(file)]
 
@@ -41,8 +24,12 @@ def get_demand_entso_e(wdir, year):
     demand = pd.DataFrame()
     for file in files:
         ### Load Raw Data
-        demand_raw = pd.read_csv(file, header=0, encoding="UTF-16",
-                                 sep="\t", usecols=usecols)
+        try: 
+            demand_raw = pd.read_csv(file, header=0, encoding="UTF-16",
+                                     sep="\t", usecols=usecols)
+        except UnicodeError:
+            demand_raw = pd.read_csv(file, header=0, sep="\t", usecols=usecols)
+
         demand_raw["MapCode"] = demand_raw["MapCode"].replace("GB", "UK")
         demand_raw.DateTime = pd.to_datetime(demand_raw.DateTime).astype('datetime64[ns]')
         demand_raw['DateTime'] = demand_raw['DateTime'].apply(lambda x:x.replace(minute=0))
@@ -57,9 +44,9 @@ def get_demand_entso_e(wdir, year):
         
         cols = ["DateTime", "MapCode", "TotalLoadValue"]
         demand_raw = pd.merge(demand_cty[cols], demand_cta[cols], on=cols[:-1], how="outer", suffixes=("", "_cta"))
-        cond = (demand_raw.TotalLoadValue.isna())&(demand_raw.TotalLoadValue_cta.notna())
+        condition = (demand_raw.TotalLoadValue.isna())&(demand_raw.TotalLoadValue_cta.notna())
 
-        demand_raw.loc[cond, "TotalLoadValue"] = demand_raw.loc[cond, "TotalLoadValue_cta"]     
+        demand_raw.loc[condition, "TotalLoadValue"] = demand_raw.loc[condition, "TotalLoadValue_cta"]     
         demand_raw = demand_raw.drop("TotalLoadValue_cta", axis=1)
         demand = pd.concat([demand, demand_raw])
         
@@ -76,9 +63,16 @@ def get_demand_entso_e(wdir, year):
 
 #%%
 if __name__ == "__main__": 
+<<<<<<< HEAD
     
     wdir = Path(package_dir)
     year = 2020
+=======
+    import pomato_data
+
+    wdir = Path(pomato_data.__path__[0]).parent 
+    year = 2015
+>>>>>>> main
     demand = get_demand_entso_e(wdir, year)
     demand.to_csv(wdir.joinpath(f'data_out/demand/demand_{year}.csv'))
     

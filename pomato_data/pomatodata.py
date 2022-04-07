@@ -1,21 +1,24 @@
 
+<<<<<<< HEAD:pomato_data/pomatodata.py
 
 #%% Import packages
 import os
+=======
+>>>>>>> main:pomato_data/pomato_data.py
 
-import requests
-import pandas as pd
-from pathlib import Path
-import shapely
-from shapely.geometry import Point, LineString
-import pyproj
-import geopandas as gpd
-import numpy as np 
 import datetime as dt
-import itertools  
-from scipy import sparse
+import itertools
 import shutil
+from pathlib import Path
 
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import pyproj
+import shapely
+from scipy import sparse
+
+<<<<<<< HEAD:pomato_data/pomatodata.py
 homedir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(homedir)
 from auxiliary import get_countries_regions_ffe, distance, \
@@ -23,6 +26,18 @@ from auxiliary import get_countries_regions_ffe, distance, \
 from res import regionalize_res_capacities, process_offshore_windhubs
 import res
 from demand import nodal_demand
+=======
+from shapely.geometry import LineString, Point
+
+from pomato_data.auxiliary import (add_timesteps, distance,
+                                    get_countries_regions_ffe,
+                                    load_data_structure, match_plants_nodes)
+
+from pomato_data.demand import nodal_demand
+from pomato_data.res import (process_offshore_windhubs,
+                              regionalize_res_capacities)
+
+>>>>>>> main:pomato_data/pomato_data.py
 
 # %% Define class
 class PomatoData():
@@ -50,10 +65,12 @@ class PomatoData():
         self.process_res_plants()
         self.marginal_costs()
 
-        self.process_availabilites()
+        self.process_availabilities()
         self.process_hydro_plants()
         self.process_offshore_plants()
         self.uniquify_marginal_costs()
+        
+        self.process_storage_level()
         
         self.fix_plant_connections()
         self.create_basic_ntcs()
@@ -76,43 +93,53 @@ class PomatoData():
     def process_zones(self):
         # Reset zones
         self.zones = self.zones[self.zones.index.isin(self.nodes.zone)]
-        non_grid_zones = [z for z in self.zones.index if z not in self.settings["grid_zones"]]
-        add_nodes = []
-        add_dclines = []
-        geod = pyproj.Geod(ellps="WGS84")
-        for z in non_grid_zones:
-            # z = "NO"
-            if z == "NO":
-                lat, lon = 63.342806, 10.459677
-            else:
-                lon, lat = shapely.wkt.loads(self.zones.loc[z, "geometry"]).centroid.coords[0]
-            name = self.zones.loc[z, "name"]
-            # substation', 'voltage', 'name', 'lat', 'lon', 'zone', 'info', 'demand', 'slack'
-            add_nodes.append(["n" + z, "n" + z, 500, name, lat, lon, z, "", True, True])
-            self.nodes.loc[self.nodes.zone == z, "demand"] = False
-            # 'node_i', 'node_j', 'name_i', 'name_j', 'voltage', 'length', 'under_construction', 
-            # 'geometry', 'technology', 'capacity', 'status', 'commissioned'
-            for n in self.nodes[self.nodes.zone == z].index:
-                geometry = LineString([Point(self.nodes.loc[n, ["lon", "lat"]]), Point(lon, lat)])
-                length = geod.geometry_length(geometry)
-                add_dclines.append(["dc" + z + "_" + n, "n" + z, n, z, n, 500, length, False,
-                                    geometry.wkt, "dc", 1e5, "online", 1900])
-        
-        add_nodes = pd.DataFrame(index=np.array(add_nodes)[:, 0], columns=self.nodes.columns, data=np.array(add_nodes)[:, 1:])
-        add_dclines = pd.DataFrame(index=np.array(add_dclines)[:, 0], columns=self.dclines.columns, data=np.array(add_dclines)[:, 1:])
-        
-        self.nodes = self.nodes.append(add_nodes)
-        self.dclines = self.dclines.append(add_dclines)
 
-        self.dclines[["capacity", "length"]] = self.dclines[["capacity", "length"]].astype("float")
-        self.nodes[["lat", "lon", "voltage"]] = self.nodes[["lat", "lon", "voltage"]].astype("float")
+        if self.settings["include_neighbors"]:
+            non_grid_zones = [z for z in self.zones.index if z not in self.settings["grid_zones"]]
+            add_nodes, add_dclines = [], []
+            geod = pyproj.Geod(ellps="WGS84")
+            for z in non_grid_zones:
+                if z == "NO":
+                    lat, lon = 63.342806, 10.459677
+                else:
+                    lon, lat = shapely.wkt.loads(self.zones.loc[z, "geometry"]).representative_point().coords[0]
+                name = self.zones.loc[z, "name"]
+                # substation', 'voltage', 'name', 'lat', 'lon', 'zone', 'info', 'demand', 'slack'
+                add_nodes.append(["n" + z, "n" + z, 500, name, lat, lon, z, "", True, True])
+                self.nodes.loc[self.nodes.zone == z, "demand"] = False
+                # 'node_i', 'node_j', 'name_i', 'name_j', 'voltage', 'length', 'under_construction', 
+                # 'geometry', 'technology', 'capacity', 'status', 'commissioned'
+                for n in self.nodes[self.nodes.zone == z].index:
+                    geometry = LineString([Point(self.nodes.loc[n, ["lon", "lat"]]), Point(lon, lat)])
+                    length = geod.geometry_length(geometry)
+                    add_dclines.append(["dc" + z + "_" + n, "n" + z, n, z, n, 500, length, False,
+                                        geometry.wkt, "dc", 1e5, "online", 1900])
+            
+            add_nodes = pd.DataFrame(index=np.array(add_nodes)[:, 0], columns=self.nodes.columns, data=np.array(add_nodes)[:, 1:])
+            add_dclines = pd.DataFrame(index=np.array(add_dclines)[:, 0], columns=self.dclines.columns, data=np.array(add_dclines)[:, 1:])
+            
+            self.nodes = self.nodes.append(add_nodes)
+            self.dclines = self.dclines.append(add_dclines)
+
+            self.dclines[["capacity", "length"]] = self.dclines[["capacity", "length"]].astype("float")
+            self.nodes[["lat", "lon", "voltage"]] = self.nodes[["lat", "lon", "voltage"]].astype("float")
         # self.nodes.loc[:, ["lat", "lon"]].dtypes
         
     def process_lines_nodes(self):
         """Process Nodes and Lines Data."""
         nodes_in_co = self.nodes.index[self.nodes.zone.isin(self.settings["grid_zones"])]
-        self.lines = self.lines[(self.lines.node_i.isin(nodes_in_co)) |
-                                (self.lines.node_j.isin(nodes_in_co))]
+        
+        # Remove nodes within and lines to/from the following regions
+        nodes_to_remove = self.nodes.index[self.nodes.zone.isin(self.settings["except_zones"])]
+
+        if self.settings["include_neighbors"]:
+            condition_in = (self.lines.node_i.isin(nodes_in_co)) | (self.lines.node_j.isin(nodes_in_co))
+        else:
+            condition_in = (self.lines.node_i.isin(nodes_in_co)) & (self.lines.node_j.isin(nodes_in_co))
+
+        condition_remove = (self.lines.node_i.isin(nodes_to_remove)) | (self.lines.node_j.isin(nodes_to_remove))
+        
+        self.lines = self.lines[condition_in & (~condition_remove)]
         # Filter Online
         # condition_online = (self.lines.status == "online") | (self.lines.commissioned <= self.settings["year"])
         condition_connected = (self.lines.node_i.isin(self.nodes.index) &  self.lines.node_j.isin(self.nodes.index))
@@ -184,12 +211,21 @@ class PomatoData():
             needed_capacity = tmp_nodes.loc[node, "needed_capacity"]
             line_cap = tmp_nodes.loc[node, "line_capacity"]
             print(f"Node {node} needs {needed_capacity}MW of transport capacity but only {line_cap}MW of line capacity connected. Increasing capacity accordingly.")
-            self.lines.loc[(node == self.lines.node_i)|(node == self.lines.node_j), "capacity"] *= needed_capacity/line_cap*1.001
+            cond = (node == self.lines.node_i)|(node == self.lines.node_j)
+            self.lines.loc[cond, "capacity"] = self.lines[cond].capacity * needed_capacity/line_cap*1.001
 
     def process_plants(self):
         
+        self.plants = pd.read_csv(self.wdir.joinpath("data_out/plants/plants.csv"), index_col=0)
+
         self.plants = self.plants[self.plants.zone.isin(self.zones.index)].reset_index(drop=True)
-        self.plants = self.plants[~self.plants.status.isin(["shutdown", "shutdown_temporary"])]
+        self.plants = self.plants[(~self.plants.status.isin(["shutdown", "shutdown_temporary"])) | (self.plants.fuel == "gas")]
+        
+        # t = self.plants[["fuel", "technology", "zone", "g_max"]].groupby(["fuel", "technology", "zone"]).sum().reset_index().fillna(0)
+        # t = t.pivot(index="zone", columns=("fuel", "technology"), values="g_max")
+        # t.plot.bar(stacked=True)
+        # t.loc["DE"]        
+        
         self.plants["heatarea"] = None
         self.plants.index = "p" + self.plants.index.astype(str)
         self.plants.loc[self.plants.g_max.isnull(), "g_max"] = 0
@@ -223,7 +259,7 @@ class PomatoData():
         self.plants.loc[:, "mc_heat"] = 0
         
     def process_demand(self):
-        
+        # self = data
         self.demand_el = self.demand_el[(self.demand_el.utc_timestamp >= self.time_horizon["start"]) & \
                                   (self.demand_el.utc_timestamp < self.time_horizon["end"])]
         self.demand_el = self.demand_el.set_index("utc_timestamp")
@@ -237,8 +273,7 @@ class PomatoData():
     
     def process_res_plants(self):
         
-        res_plants = regionalize_res_capacities(self.wdir, self.settings["capacity_year"], 
-                                                self.nodes.copy(), self.zones.index, self.technology)
+        res_plants = regionalize_res_capacities(self.wdir, self.nodes.copy(), self.zones.index, self.technology, self.settings)
         res_plants.g_max.sum()
         self.plants = pd.concat([self.plants, res_plants])
         
@@ -262,15 +297,16 @@ class PomatoData():
         self.plants = pd.concat([self.plants, plants])
         self.plants.loc[self.plants.d_max.isna(), "d_max"] = 0
 
-    def process_availabilites(self):
+    def process_availabilities(self):
         
         plants = self.plants[self.plants.technology.isin(["solar", "wind onshore"])]
         nodes =  self.nodes[self.nodes.index.isin(plants.node)].copy()
         
         year = self.settings["weather_year"]
         wind_availability = pd.read_csv(self.wdir.joinpath(f'data_out/res_availability/wind_availability_{year}.csv'), index_col=0)
+        
         pv_availability = pd.read_csv(self.wdir.joinpath(f'data_out/res_availability/pv_availability_{year}.csv'), index_col=0)
-
+               
         wind_availability = wind_availability.pivot(index="utc_timestamp", columns="nuts_id", values="value")
         wind_availability.index = pd.to_datetime(wind_availability.index).astype('datetime64[ns]')
         wind_availability = wind_availability.sort_index()
@@ -291,7 +327,7 @@ class PomatoData():
 
         geometry = [shapely.geometry.Point(xy) for xy in zip(nodes.lon, nodes.lat)]
         nodes = gpd.GeoDataFrame(nodes, crs="EPSG:4326", geometry=geometry)
-        nuts_to_nodes = gpd.sjoin(nodes, nuts_data, how='left', op='within')       
+        nuts_to_nodes = gpd.sjoin(nodes, nuts_data, how='left', predicate='within')       
         
         # Non Grid Countries get the average availability of all NUTS3 Areas
         availability = pd.DataFrame(index=wind_availability.index)
@@ -318,9 +354,9 @@ class PomatoData():
         self.availability = add_timesteps(availability)
 
     def process_offshore_plants(self):
-        weather_year = self.settings["weather_year"]
-        capacity_year = self.settings["capacity_year"]
-        offshore_plants, offshore_nodes, offshore_connections, offshore_availability = process_offshore_windhubs(self.wdir, self.nodes, weather_year, capacity_year)
+        offshore_plants, offshore_nodes, offshore_connections, offshore_availability = process_offshore_windhubs(
+            self.wdir, self.nodes, self.settings
+        )
         
         offshore_availability = offshore_availability[(offshore_availability.index >= self.time_horizon["start"]) & \
                                                       (offshore_availability.index < self.time_horizon["end"])]
@@ -335,8 +371,7 @@ class PomatoData():
         self.nodes = pd.concat([self.nodes, offshore_nodes])
 
     def create_basic_ntcs(self, commercial_exchange=True):
-        # from pyhsical cross border flows
-        # pcbf[(pcbf.from_zone == "SE")&(pcbf.to_zone == "DK")].max()
+        # from physical cross border flows
         year = self.settings["weather_year"]
         if commercial_exchange:
             exchange = pd.read_csv(self.wdir.joinpath(f'data_out/exchange/commercial_exchange_{year}.csv'), index_col=0)
@@ -346,14 +381,29 @@ class PomatoData():
         exchange.utc_timestep = pd.to_datetime(exchange.utc_timestep).astype('datetime64[ns]')
         self.ntc = pd.DataFrame(index=pd.MultiIndex.from_tuples([(f,t) for (f,t) in itertools.permutations(list(self.zones.index), 2)]))
 
-        
-        max_pcbf = exchange.groupby(["from_zone", "to_zone"]).quantile(0.85).reset_index()
+        max_flow = exchange.groupby(["from_zone", "to_zone"]).quantile(0.85).reset_index()
         self.ntc["ntc"] = 0
         for (f,t) in self.ntc.index:
-            max_pcbf.loc[(max_pcbf.from_zone == f) & (max_pcbf.to_zone == t), "value"].max()
+            self.ntc.loc[(f,t), "ntc"] = max_flow.loc[(max_flow.from_zone == f) & (max_flow.to_zone == t), "value"].max()
                 
         self.ntc = self.ntc.reset_index().fillna(0)
         self.ntc.columns = ["zone_i", "zone_j", "ntc"]
+        self.set_ntc_for_no_connection()
+        # # Set NTC to zero if no physical connection exists. 
+        # for (f,t) in zip(self.ntc.zone_i, self.ntc.zone_j):
+        #     lines, dclines = [], []
+        #     lines += list(self.lines.index[(self.lines.node_i.isin(self.nodes.index[self.nodes.zone == f]))&(self.lines.node_j.isin(self.nodes.index[self.nodes.zone == t])) ])
+        #     lines += list(self.lines.index[(self.lines.node_i.isin(self.nodes.index[self.nodes.zone == t]))&(self.lines.node_j.isin(self.nodes.index[self.nodes.zone == f]))])
+        #     dclines += list(self.dclines.index[(self.dclines.node_i.isin(self.nodes.index[self.nodes.zone == f]))&(self.dclines.node_j.isin(self.nodes.index[self.nodes.zone == t])) ])
+        #     dclines += list(self.dclines.index[(self.dclines.node_i.isin(self.nodes.index[self.nodes.zone == t]))&(self.dclines.node_j.isin(self.nodes.index[self.nodes.zone == f]))])
+        
+        #     ntc_values = self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"].sum()
+        #     if len(lines) == 0 and len(dclines) == 0:
+        #         self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] = 0
+        #     elif ntc_values < self.dclines.loc[dclines, "capacity"].sum():  #all(self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] == 0):
+        #         self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] = self.dclines.loc[dclines, "capacity"].sum()
+
+    def set_ntc_for_no_connection(self, set_min_values=True):
         # Set NTC to zero if no physical connection exists. 
         for (f,t) in zip(self.ntc.zone_i, self.ntc.zone_j):
             lines, dclines = [], []
@@ -365,9 +415,9 @@ class PomatoData():
             ntc_values = self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"].sum()
             if len(lines) == 0 and len(dclines) == 0:
                 self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] = 0
-            elif ntc_values < self.dclines.loc[dclines, "capacity"].sum():  #all(self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] == 0):
-                self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] = self.dclines.loc[dclines, "capacity"].sum()
-            
+            elif (ntc_values < self.dclines.loc[dclines, "capacity"].sum()) and set_min_values:  #all(self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] == 0):
+                self.ntc.loc[(self.ntc.zone_i == f) & (self.ntc.zone_j == t), "ntc"] = self.dclines.loc[dclines, "capacity"].sum() 
+        
     def connect_small_subnetworks(self):
         """Connect small (<10) node subnetworks to the main network."""
         
@@ -377,15 +427,15 @@ class PomatoData():
             A[i, self.nodes.index.get_loc(self.lines.node_i[elem])] = 1
             A[i, self.nodes.index.get_loc(self.lines.node_j[elem])] = -1
         
-        # Find Network Components, i.e. number of unconnectd subnetorks. 
-        network_componends = sparse.csgraph.connected_components(np.dot(A.T, A))
-        nodes_per_component = {i : len(self.nodes.index[network_componends[1] == i]) for i in range(0, network_componends[0])}
-        nodes_in_main_networks = np.isin(network_componends[1], [i for i in nodes_per_component if nodes_per_component[i] > len(self.nodes.index)/10])
+        # Find Network Components, i.e. number of unconnected subnetwork. 
+        network_components = sparse.csgraph.connected_components(np.dot(A.T, A))
+        nodes_per_component = {i : len(self.nodes.index[network_components[1] == i]) for i in range(0, network_components[0])}
+        nodes_in_main_networks = np.isin(network_components[1], [i for i in nodes_per_component if nodes_per_component[i] > len(self.nodes.index)/10])
         
-        # Create synthetic lines between small subnetork and the main network
+        # Create synthetic lines between small subnetwork and the main network
         add_lines = []
         for i in [subnetwork for subnetwork in nodes_per_component if (1 < nodes_per_component[subnetwork] < 10)]:
-            condition_subnetwork = network_componends[1] == i
+            condition_subnetwork = network_components[1] == i
             tmp_nodes = self.nodes[condition_subnetwork].copy()
             tmp_nodes[["closest_node", "distance_closest_node"]] = "", 0
         
@@ -404,7 +454,7 @@ class PomatoData():
             add_lines.append([node_i, tmp_nodes.loc[node_i, "closest_node"], 
                               tmp_nodes.loc[node_i, "name"], 
                               self.nodes.loc[tmp_nodes.loc[node_i, "closest_node"], "name"],
-                              220, tmp_nodes.loc[node_i, "distance_closest_node"], 
+                              "220", tmp_nodes.loc[node_i, "distance_closest_node"], 
                               False, np.nan, "ac_synth", x, r, x_pu, r_pu, 491.556, "online", 1900, False, 1])
 
         tmp_df = pd.DataFrame(index=["sl" + str(i) for i in range(0, len(add_lines))], 
@@ -424,10 +474,11 @@ class PomatoData():
     def save_to_csv(self, foldername, path=None):
         
         data_structure = self.data_structure_sheet()
-        if not path:
-            path = self.wdir.joinpath("pomato_datasets").joinpath(foldername)
-        else:
+        if isinstance(path, Path):
             path = path.joinpath(foldername)
+        else:
+            path = self.wdir.joinpath("pomato_datasets").joinpath(foldername)
+
         if not path.is_dir():
             path.mkdir()
 
@@ -452,7 +503,7 @@ class PomatoData():
             elm = pd.read_csv(filepath)
         else:
             year = self.settings["capacity_year"]
-            elm = pd.read_csv(self.wdir.joinpath(f"data_out/drop_network_elements_{year}.csv"))
+            elm = pd.read_csv(self.wdir.joinpath(f"data_in/grid/drop_network_elements_{year}.csv"))
 
 
         nodes = [node for node in elm.nodes if node in self.nodes.index]
@@ -478,18 +529,58 @@ class PomatoData():
         
     def uniquify_marginal_costs(self):
         for mc in self.plants.mc_el.unique():
-            cond = self.plants.mc_el == mc
-            eps = 1/sum(cond)
-            self.plants.loc[cond, "mc_el"] = [mc + eps*i for i in range(0, sum(cond))]
+            condition = self.plants.mc_el == mc
+            eps = 1/sum(condition)
+            self.plants.loc[condition, "mc_el"] = [mc + eps*i for i in range(0, sum(condition))]
             
+            
+    def process_storage_level(self):
+        
+        year = self.settings["weather_year"]
+        storage_level = pd.read_csv(self.wdir.joinpath(f'data_out/hydro/storage_level_{year}.csv'), index_col=0)
+        storage_level = storage_level.reset_index(drop=True)
+        storage_level.utc_timestamp = pd.to_datetime(storage_level.utc_timestamp).astype('datetime64[ns]')
+        storage_level["storage_level"] = storage_level["storage_level"] / (1.25 * storage_level.groupby("zone").max().loc[storage_level.zone, "storage_level"].values)
+                
+        storage_level = storage_level[storage_level.zone.isin(self.plants.loc[self.plants.plant_type == "hydro_res", "zone"])]
+        # storage_level.pivot(index="utc_timestamp", columns="zone", values="storage_level").plot()
+        
+        storage_level = storage_level[(storage_level.utc_timestamp >= self.time_horizon["start"]) & \
+                                      (storage_level.utc_timestamp < self.time_horizon["end"])]
+
+        timestep_index = self.demand_el.loc[self.demand_el.utc_timestamp.isin(storage_level.utc_timestamp), "utc_timestamp"]
+        storage_level_plants = pd.DataFrame()
+        
+        for plant in self.plants[(self.plants.plant_type == "hydro_res")&(self.plants.zone.isin(storage_level.zone))].index:
+            
+            tmp_storage_level = pd.merge(timestep_index.reset_index(), storage_level[storage_level.zone == self.plants.loc[plant, "zone"]], 
+                                         on="utc_timestamp", how="left")
+            tmp_storage_level = tmp_storage_level.drop("zone", axis=1)
+            tmp_storage_level["plant"] = plant
+            if any(tmp_storage_level.storage_level.isna()):
+                for idx in tmp_storage_level[tmp_storage_level.storage_level.isna()].index:
+                    tmp_storage_level.loc[idx, "storage_level"] = tmp_storage_level.loc[idx-1, "storage_level"]
+                 
+            t_start = tmp_storage_level.loc[[0], tmp_storage_level.columns].copy()
+            t_start["timestep"] = self.demand_el.index[0]
+            t_end = tmp_storage_level.loc[[len(tmp_storage_level) - 1], tmp_storage_level.columns].copy()
+            t_end["timestep"] = self.demand_el.index[-1]
+            storage_level_plants = pd.concat([storage_level_plants, pd.concat([t_start, tmp_storage_level, t_end])])
+        
+        self.storage_level = storage_level_plants.reset_index()[["timestep", "plant", "storage_level"]]
+        
+        
+        
 # %%
 
 if __name__ == "__main__":  
-
+    
+    import pomato_data
     settings = {
         # "grid_zones": ["DE", "FR", "BE", "LU", "NL"],
         "grid_zones": ["DE"],
         "weather_year": 2019,
+<<<<<<< HEAD:pomato_data/pomatodata.py
         "capacity_year": 2030, 
         # "capacity_year": 2020, 
         "co2_price": 60,
@@ -500,3 +591,20 @@ if __name__ == "__main__":
     os.path.dirname(os.path.abspath(__file__))
     wdir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     data = PomatoData(wdir, settings)
+=======
+        # "capacity_year": 2030, 
+        "capacity_year": 2022, 
+        "co2_price": 60,
+        "split_lines": False,
+        # "time_horizon": "01.11.2019 - 30.11.2019",
+        "time_horizon": "01.01.2019 - 31.01.2019",
+        }
+
+    wdir = Path(pomato_data.__path__[0]).parent 
+    data = PomatoData(wdir, settings)
+    self = data 
+
+
+
+
+>>>>>>> main:pomato_data/pomato_data.py
