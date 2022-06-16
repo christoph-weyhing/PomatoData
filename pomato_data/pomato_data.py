@@ -47,7 +47,10 @@ class PomatoData():
             
             self.process_plants()
             self.process_res_plants()
-            self.decommission_plants()
+            try:
+                self.decommission_plants()
+            except KeyError:
+                print("No decommissiong performed\n")
             self.process_storage()
 
             self.process_demand()

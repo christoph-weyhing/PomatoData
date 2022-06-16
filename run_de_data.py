@@ -13,13 +13,12 @@ settings = {
     "grid_zones": ["DE"],
     "future": True,     # create future scenario or data set for present
     "weather_year": 2019,
-    # "capacity_year": 2030,
-    "scenario": 'NEP_C_2030_ext_anymod',    # name of the csv file in folder data_out/extension containing overall installed power data
-    "year": 2030,   # target year of data set
-    "decommissioning": {"method":"linear",
-                        "fuels":["lignite", "hard coal", "uran", "gas", "oil"],
-                        "zones":["DE"]},
-    "co2_price": 60,
+    "scenario": '2022_energy_charts',    # name of the csv file in folder data_out/extension containing overall installed power data
+    "year": 2022,   # target year of data set
+    # "decommissioning": {"method":"linear",
+    #                     "fuels":["lignite", "hard coal", "uran", "gas", "oil"],
+    #                     "zones":["DE"]},
+    "co2_price": 75,
     "split_lines": True,
     "time_horizon": "01.01.2019 - 01.01.2020", 
     }
@@ -81,7 +80,7 @@ drop_plants = [p for p in data.availability.columns if p not in data.plants.inde
 data.availability = data.availability.drop(drop_plants, axis=1)
     
 #%% Save data set
-foldername = f"DE_{settings['year']}"
+foldername = f"DE_gas200euros_{settings['year']}"
 data.save_to_csv(foldername)
 
 #%% Data checks
